@@ -111,4 +111,4 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DPython3_EXECUTABLE="$(which python3)"
 fi
 
-sudo ninja -C "${TARGET_BUILD}" install
+ninja -C "${TARGET_BUILD}" check-llvm
