@@ -392,6 +392,7 @@ set(LLVM_ALL_TARGETS
 # SyncVM local begin
 add_compile_definitions(_SYNCVM)
 add_compile_options(-fprofile-instr-generate -fcoverage-mapping)   # TODO:  conditionalize
+add_link_options(-fprofile-instr-generate -fcoverage-mapping)   # TODO:  conditionalize
 # SyncVM local end
 
 # List of targets with JIT support:
