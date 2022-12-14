@@ -33,6 +33,26 @@ using namespace llvm;
 
 #define DEBUG_TYPE "syncvm-lower"
 
+/// Wrap global address with GAStack or GACode nodes.
+/// Precondition:
+/// \p ValueToWrap is SDValue containing a GlobalAddressSDNode.
+/// The nodes are to lower CopyToReg GlobalAddress to
+/// 1. Materialize GlobalAddress in a virtual register
+/// 2. Copy it to a physical one.
+/// TODO: CPR-921 Should be removed after a proper wrapping is implemented.
+static SDValue wrappedGlobalAddress(const SDValue& ValueToWrap, SelectionDAG &DAG,
+                                    const SDLoc& DL) {
+  auto *GANode = cast<GlobalAddressSDNode>(ValueToWrap.getNode());
+  switch (GANode->getAddressSpace()) {
+  case SyncVMAS::AS_STACK:
+    return DAG.getNode(SyncVMISD::GAStack, DL, MVT::i256, ValueToWrap);
+  case SyncVMAS::AS_CODE:
+    return DAG.getNode(SyncVMISD::GACode, DL, MVT::i256, ValueToWrap);
+  }
+  llvm_unreachable("Global symbol in unexpected addr space");
+  return {};
+}
+
 SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
                                            const SyncVMSubtarget &STI)
     : TargetLowering(TM) {
@@ -46,31 +66,49 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   // Provide all sorts of operation actions
   setStackPointerRegisterToSaveRestore(SyncVM::SP);
 
-  setOperationAction(ISD::GlobalAddress, MVT::i256, Custom);
-  setOperationAction(ISD::BR_CC, MVT::i256, Custom);
-  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
-  setOperationAction(ISD::SETCC, MVT::i256, Expand);
-  setOperationAction(ISD::SELECT, MVT::i256, Expand);
-  setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
+  // By default, expand all i256bit operations
+  for (unsigned Opc = 0; Opc < ISD::BUILTIN_OP_END; ++Opc)
+    setOperationAction(Opc, MVT::i256, Expand);
 
-  // special handling of udiv/urem
-  setOperationAction(ISD::UDIV, MVT::i256, Expand);
-  setOperationAction(ISD::UREM, MVT::i256, Expand);
-  setOperationAction(ISD::UDIVREM, MVT::i256, Legal);
+  setOperationAction(
+      {
+          ISD::BR_JT,
+          ISD::BRIND,
+          ISD::BRCOND,
+          ISD::VASTART,
+          ISD::VAARG,
+          ISD::VAEND,
+          ISD::VACOPY,
+      },
+      MVT::Other, Expand);
 
-  // special handling of umulxx
-  setOperationAction(ISD::MUL, MVT::i256, Expand);
-  setOperationAction(ISD::MULHU, MVT::i256, Expand);
-  setOperationAction(ISD::SMUL_LOHI, MVT::i256, Expand);
-  setOperationAction(ISD::UMUL_LOHI, MVT::i256, Legal);
+  // Legal operations
+  setOperationAction({ISD::ADD, ISD::SUB, ISD::AND, ISD::OR, ISD::XOR, ISD::SHL,
+                      ISD::SRL, ISD::UDIVREM, ISD::UMUL_LOHI, ISD::Constant,
+                      ISD::UNDEF, ISD::FRAMEADDR},
+                     MVT::i256, Legal);
 
-  setOperationAction(ISD::MULHS, MVT::i256, Expand);
-  setOperationAction(ISD::MULHU, MVT::i256, Expand);
+  // custom lowering operations
+  setOperationAction(
+      {
+          ISD::SRA,
+          ISD::SDIV,
+          ISD::SREM,
+          ISD::STORE,
+          ISD::LOAD,
+          ISD::ZERO_EXTEND,
+          ISD::ANY_EXTEND,
+          ISD::GlobalAddress,
+          ISD::BR_CC,
+          ISD::SELECT_CC,
+          ISD::BSWAP,
+          ISD::CTPOP,
+      },
+      MVT::i256, Custom);
 
-  // SyncVM lacks of native support for signed operations.
-  setOperationAction(ISD::SRA, MVT::i256, Custom);
-  setOperationAction(ISD::SDIV, MVT::i256, Custom);
-  setOperationAction(ISD::SREM, MVT::i256, Custom);
+  setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
+                      ISD::STACKSAVE, ISD::STACKRESTORE},
+                     MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
     setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
@@ -80,28 +118,17 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::MERGE_VALUES, VT, Promote);
   }
 
-  setOperationAction(ISD::STACKSAVE, MVT::Other, Custom);
-  setOperationAction(ISD::STACKRESTORE, MVT::Other, Custom);
-
-  // Intrinsics lowering
-  setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN},
-                     MVT::Other, Custom);
-
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::ZEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::EXTLOAD, MVT::i256, VT, Custom);
   }
 
-  setOperationAction(ISD::STORE, MVT::i256, Custom);
-  setOperationAction(ISD::LOAD, MVT::i256, Custom);
-
+  // fatptr operations
   setOperationAction(ISD::LOAD, MVT::fatptr, Legal);
   setOperationAction(ISD::STORE, MVT::fatptr, Legal);
 
-  setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
-  setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
-
+  // special DAG combining handling for SyncVM
   setTargetDAGCombine(ISD::ZERO_EXTEND);
 
   setJumpIsExpensive(false);
@@ -132,7 +159,6 @@ bool SyncVMTargetLowering::CanLowerReturn(
     CallingConv::ID CallConv, MachineFunction &MF, bool IsVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
 
-  MachineRegisterInfo &RegInfo = MF.getRegInfo();
   if (Outs.size() >= SyncVM::GR256RegClass.getNumRegs() - 1)
     return false;
 
@@ -180,7 +206,10 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     CCValAssign &VA = RVLocs[i];
     assert(VA.isRegLoc() && "Can only return in registers!");
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), OutVals[i], Flag);
+    const SDValue &CurVal = OutVals[i];
+    auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
+      ? wrappedGlobalAddress(CurVal, DAG, DL) : CurVal;
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Flag);
 
     // Guarantee that all emitted copies are stuck together,
     // avoiding something bad.
@@ -368,9 +397,21 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (!MemOpChains.empty())
     Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
 
+  // If the callee is a GlobalAddress node (quite common, every direct call is)
+  // turn it into a TargetGlobalAddress node so that legalize doesn't hack it.
+  // Likewise ExternalSymbol -> TargetExternalSymbol.
+  if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee))
+    Callee = DAG.getTargetGlobalAddress(G->getGlobal(), DL, MVT::i256);
+  else if (ExternalSymbolSDNode *E = dyn_cast<ExternalSymbolSDNode>(Callee))
+    Callee = DAG.getTargetExternalSymbol(E->getSymbol(), MVT::i256);
+
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     if (ArgLocs[i].isRegLoc()) {
-      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i],
+      SDValue &CurVal = OutVals[i];
+      auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
+        ? wrappedGlobalAddress(CurVal, DAG, DL) : CurVal;
+
+      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), Val,
                                InFlag);
       InFlag = Chain.getValue(1);
     }
@@ -529,41 +570,31 @@ static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
 
 SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
+  // clang-format off
   switch (Op.getOpcode()) {
+  case ISD::STORE:              return LowerSTORE(Op, DAG);
+  case ISD::LOAD:               return LowerLOAD(Op, DAG);
+  case ISD::ZERO_EXTEND:        return LowerZERO_EXTEND(Op, DAG);
+  case ISD::ANY_EXTEND:         return LowerANY_EXTEND(Op, DAG);
+  case ISD::GlobalAddress:      return LowerGlobalAddress(Op, DAG);
+  case ISD::BlockAddress:       return LowerBlockAddress(Op, DAG);
+  case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
+  case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
+  case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
+  case ISD::CopyToReg:          return LowerCopyToReg(Op, DAG);
+  case ISD::SRA:                return LowerSRA(Op, DAG);
+  case ISD::SDIV:               return LowerSDIV(Op, DAG);
+  case ISD::SREM:               return LowerSREM(Op, DAG);
+  case ISD::INTRINSIC_VOID:     return LowerINTRINSIC_VOID(Op, DAG);
+  case ISD::INTRINSIC_WO_CHAIN: return LowerINTRINSIC_WO_CHAIN(Op, DAG);
+  case ISD::STACKSAVE:          return LowerSTACKSAVE(Op, DAG);
+  case ISD::STACKRESTORE:       return LowerSTACKRESTORE(Op, DAG);
+  case ISD::BSWAP:              return LowerBSWAP(Op, DAG);
+  case ISD::CTPOP:              return LowerCTPOP(Op, DAG);
   default:
     llvm_unreachable("unimplemented operation lowering");
-    return SDValue();
-  case ISD::STORE:
-    return LowerSTORE(Op, DAG);
-  case ISD::LOAD:
-    return LowerLOAD(Op, DAG);
-  case ISD::ZERO_EXTEND:
-    return LowerZERO_EXTEND(Op, DAG);
-  case ISD::ANY_EXTEND:
-    return LowerANY_EXTEND(Op, DAG);
-  case ISD::GlobalAddress:
-    return LowerGlobalAddress(Op, DAG);
-  case ISD::BR_CC:
-    return LowerBR_CC(Op, DAG);
-  case ISD::SELECT_CC:
-    return LowerSELECT_CC(Op, DAG);
-  case ISD::CopyToReg:
-    return LowerCopyToReg(Op, DAG);
-  case ISD::SRA:
-    return LowerSRA(Op, DAG);
-  case ISD::SDIV:
-    return LowerSDIV(Op, DAG);
-  case ISD::SREM:
-    return LowerSREM(Op, DAG);
-  case ISD::INTRINSIC_VOID:
-    return LowerINTRINSIC_VOID(Op, DAG);
-  case ISD::INTRINSIC_WO_CHAIN:
-    return LowerINTRINSIC_WO_CHAIN(Op, DAG);
-  case ISD::STACKSAVE:
-    return LowerSTACKSAVE(Op, DAG);
-  case ISD::STACKRESTORE:
-    return LowerSTACKRESTORE(Op, DAG);
   }
+  // clang-format on
 }
 
 SDValue SyncVMTargetLowering::LowerANY_EXTEND(SDValue Op,
@@ -773,13 +804,37 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
 
 SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
                                                  SelectionDAG &DAG) const {
-  const GlobalValue *GV = cast<GlobalAddressSDNode>(Op)->getGlobal();
+  auto *GANode = cast<GlobalAddressSDNode>(Op);
+  const GlobalValue *GV = GANode->getGlobal();
   int64_t Offset = cast<GlobalAddressSDNode>(Op)->getOffset();
   auto PtrVT = getPointerTy(DAG.getDataLayout());
 
   // Create the TargetGlobalAddress node, folding in the constant offset.
   SDValue Result = DAG.getTargetGlobalAddress(GV, SDLoc(Op), PtrVT, Offset);
   return Result;
+}
+
+SDValue SyncVMTargetLowering::LowerExternalSymbol(SDValue Op,
+                                                  SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  const char *Sym = cast<ExternalSymbolSDNode>(Op)->getSymbol();
+  EVT PtrVT = Op.getValueType();
+  SDValue Result = DAG.getTargetExternalSymbol(Sym, PtrVT);
+
+  // SyncVM doesn't support external symbols, but it make sense to enable
+  // generic codegen tests to pass. In case an external symbol persist linker
+  // will emit a diagnostic.
+  return DAG.getNode(SyncVMISD::GACode, dl, PtrVT, Result);
+}
+
+SDValue SyncVMTargetLowering::LowerBlockAddress(SDValue Op,
+                                                SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  const BlockAddress *BA = cast<BlockAddressSDNode>(Op)->getBlockAddress();
+  EVT PtrVT = Op.getValueType();
+  SDValue Result = DAG.getTargetBlockAddress(BA, PtrVT);
+
+  return DAG.getNode(SyncVMISD::GACode, dl, PtrVT, Result);
 }
 
 SDValue SyncVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
@@ -824,7 +879,7 @@ SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
   if (Src.getOpcode() == ISD::FrameIndex ||
       (Src.getOpcode() == ISD::ADD &&
        Src.getOperand(0).getOpcode() == ISD::FrameIndex)) {
-    unsigned Reg = cast<RegisterSDNode>(Op.getOperand(1))->getReg();
+    Register Reg = cast<RegisterSDNode>(Op.getOperand(1))->getReg();
     // TODO: It's really a hack:
     // If we put an expression involving stack frame, we replase the address in
     // bytes with the address in cells. Probably we need to reconsider that
@@ -919,6 +974,117 @@ SDValue SyncVMTargetLowering::LowerSTACKRESTORE(SDValue Op,
       DAG.getNode(ISD::SUB, DL, MVT::i256, Op.getOperand(1), CurrentSP);
   return DAG.getNode(SyncVMISD::CHANGE_SP, DL, MVT::Other,
                      CurrentSP.getValue(1), SPDelta);
+}
+
+SDValue SyncVMTargetLowering::LowerBSWAP(SDValue BSWAP,
+                                         SelectionDAG &DAG) const {
+  SDNode *N = BSWAP.getNode();
+  SDLoc dl(N);
+  EVT VT = N->getValueType(0);
+  SDValue Op = N->getOperand(0);
+  EVT SHVT = getShiftAmountTy(VT, DAG.getDataLayout());
+
+  assert(VT == MVT::i256 && "Unexpected type for bswap");
+
+  SDValue Tmp[33];
+
+  for (int i = 32; i >= 17; i--) {
+    Tmp[i] = DAG.getNode(ISD::SHL, dl, VT, Op,
+                         DAG.getConstant((i - 17) * 16 + 8, dl, SHVT));
+  }
+
+  for (int i = 16; i >= 1; i--) {
+    Tmp[i] = DAG.getNode(ISD::SRL, dl, VT, Op,
+                         DAG.getConstant((16 - i) * 16 + 8, dl, SHVT));
+  }
+
+  APInt FFMask = APInt(256, 255);
+
+  // mask off unwanted bytes
+  for (int i = 2; i < 32; i++) {
+    Tmp[i] = DAG.getNode(ISD::AND, dl, VT, Tmp[i],
+                         DAG.getConstant(FFMask << ((i - 1) * 8), dl, VT));
+  }
+
+  // OR everything together
+  for (int i = 2; i <= 32; i += 2) {
+    Tmp[i] = DAG.getNode(ISD::OR, dl, VT, Tmp[i], Tmp[i - 1]);
+  }
+
+  for (int i = 4; i <= 32; i += 4) {
+    Tmp[i] = DAG.getNode(ISD::OR, dl, VT, Tmp[i], Tmp[i - 2]);
+  }
+
+  for (int i = 8; i <= 32; i += 8) {
+    Tmp[i] = DAG.getNode(ISD::OR, dl, VT, Tmp[i], Tmp[i - 4]);
+  }
+
+  Tmp[32] = DAG.getNode(ISD::OR, dl, VT, Tmp[32], Tmp[24]);
+  Tmp[16] = DAG.getNode(ISD::OR, dl, VT, Tmp[16], Tmp[8]);
+
+  return DAG.getNode(ISD::OR, dl, VT, Tmp[32], Tmp[16]);
+}
+
+// This function only counts the number of bits in the lower 128 bits
+// It is a slightly modified version of TargetLowering::expandCTPOP
+static SDValue countPOP128(SDValue Op, SelectionDAG &DAG) {
+  SDLoc dl(Op);
+  EVT VT = Op->getValueType(0);
+
+  // This is the "best" algorithm from
+  // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+  SDValue Mask55 = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x55)), dl, VT);
+  SDValue Mask33 = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x33)), dl, VT);
+  SDValue Mask0F = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x0F)), dl, VT);
+
+  // v = v - ((v >> 1) & 0x55555555...)
+  Op = DAG.getNode(ISD::SUB, dl, VT, Op,
+                   DAG.getNode(ISD::AND, dl, VT,
+                               DAG.getNode(ISD::SRL, dl, VT, Op,
+                                           DAG.getConstant(1, dl, MVT::i256)),
+                               Mask55));
+  // v = (v & 0x33333333...) + ((v >> 2) & 0x33333333...)
+  Op = DAG.getNode(ISD::ADD, dl, VT, DAG.getNode(ISD::AND, dl, VT, Op, Mask33),
+                   DAG.getNode(ISD::AND, dl, VT,
+                               DAG.getNode(ISD::SRL, dl, VT, Op,
+                                           DAG.getConstant(2, dl, MVT::i256)),
+                               Mask33));
+  // v = (v + (v >> 4)) & 0x0F0F0F0F...
+  Op = DAG.getNode(ISD::AND, dl, VT,
+                   DAG.getNode(ISD::ADD, dl, VT, Op,
+                               DAG.getNode(ISD::SRL, dl, VT, Op,
+                                           DAG.getConstant(4, dl, MVT::i256))),
+                   Mask0F);
+
+  // v = (v * 0x01010101...) >> (Len - 8)
+  SDValue Mask01 = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x01)), dl, VT);
+  return DAG.getNode(ISD::SRL, dl, VT,
+                     DAG.getNode(ISD::MUL, dl, VT, Op, Mask01),
+                     DAG.getConstant(120, dl, MVT::i256));
+}
+
+SDValue SyncVMTargetLowering::LowerCTPOP(SDValue CTPOP,
+                                         SelectionDAG &DAG) const {
+  SDNode *Node = CTPOP.getNode();
+  SDLoc dl(Node);
+  EVT VT = Node->getValueType(0);
+  SDValue Op = Node->getOperand(0);
+
+  // split the Op into two parts and count separately
+  SDValue hiPart =
+      DAG.getNode(ISD::SRL, dl, VT, Op, DAG.getConstant(128, dl, MVT::i256));
+  SDValue loPart =
+      DAG.getNode(ISD::AND, dl, VT, Op,
+                  DAG.getConstant(APInt::getLowBitsSet(256, 128), dl, VT));
+  auto loSum = DAG.getNode(ISD::AND, dl, VT, countPOP128(loPart, DAG),
+                           DAG.getConstant(255, dl, VT));
+  auto hiSum = DAG.getNode(ISD::AND, dl, VT, countPOP128(hiPart, DAG),
+                           DAG.getConstant(255, dl, VT));
+  return DAG.getNode(ISD::ADD, dl, VT, loSum, hiSum);
 }
 
 void SyncVMTargetLowering::ReplaceNodeResults(SDNode *N,

@@ -47,6 +47,8 @@ public:
   const char *getTargetNodeName(unsigned Opcode) const override;
 
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerExternalSymbol(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyToReg(SDValue Op, SelectionDAG &DAG) const;
@@ -64,6 +66,8 @@ public:
   SDValue LowerSTACKSAVE(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTACKRESTORE(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyFromReg(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBSWAP(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerCTPOP(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerConstant(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
