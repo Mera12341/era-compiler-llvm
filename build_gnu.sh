@@ -89,6 +89,7 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
         -G 'Ninja' \
+        -DLLVM_BUILD_INSTRUMENTED_COVERAGE='On' \
         -DPACKAGE_VENDOR='Matter Labs' \
         -DCLANG_VENDOR='Matter Labs' \
         -DCLANG_REPOSITORY_STRING='origin' \
