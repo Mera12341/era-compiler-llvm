@@ -12,7 +12,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
         -G 'Ninja' \
-        -DLLVM_BUILD_INSTRUMENTED_COVERAGE='On' \
+        -DLLVM_BUILD_INSTRUMENTED_COVERAGE=${LLVM_BUILD_INSTRUMENTED_COVERAGE:-Off} \
         -DPACKAGE_VENDOR='Matter Labs' \
         -DCLANG_VENDOR='Matter Labs' \
         -DCLANG_REPOSITORY_STRING='origin' \
@@ -49,6 +49,7 @@ elif [[ -f '/etc/arch-release' ]]; then
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
         -G 'Ninja' \
+        -DLLVM_BUILD_INSTRUMENTED_COVERAGE=${LLVM_BUILD_INSTRUMENTED_COVERAGE:-Off} \
         -DPACKAGE_VENDOR='Matter Labs' \
         -DCLANG_VENDOR='Matter Labs' \
         -DCLANG_REPOSITORY_STRING='origin' \
@@ -89,7 +90,7 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
         -G 'Ninja' \
-        -DLLVM_BUILD_INSTRUMENTED_COVERAGE='On' \
+        -DLLVM_BUILD_INSTRUMENTED_COVERAGE=${LLVM_BUILD_INSTRUMENTED_COVERAGE:-Off} \
         -DPACKAGE_VENDOR='Matter Labs' \
         -DCLANG_VENDOR='Matter Labs' \
         -DCLANG_REPOSITORY_STRING='origin' \
