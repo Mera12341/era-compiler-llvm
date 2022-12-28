@@ -80,8 +80,8 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         sudo apt --yes update
         sudo apt --yes install \
             cmake \
-            clang-11 \
-            lld-11 \
+            clang-14 \
+            lld-14 \
             ninja-build
         export LLVM_VERSION=11
     fi
