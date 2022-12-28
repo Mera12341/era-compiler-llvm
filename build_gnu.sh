@@ -83,7 +83,7 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
             clang-14 \
             lld-14 \
             ninja-build
-        export LLVM_VERSION=11
+        export LLVM_VERSION=14
     fi
 
     cmake \
