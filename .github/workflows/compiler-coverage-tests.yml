@@ -1,4 +1,4 @@
-name: Compiler integration testing
+name: Compiler coverage testing
 
 on:
   pull_request:
