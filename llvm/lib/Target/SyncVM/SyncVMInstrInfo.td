@@ -84,6 +84,9 @@ def SyncVMptr_add    : SDNode<"SyncVMISD::PTR_ADD", SDT_SyncVMPtrOp, []>;
 def SyncVMptr_pack   : SDNode<"SyncVMISD::PTR_PACK", SDT_SyncVMPtrOp, []>;
 def SyncVMptr_shrink : SDNode<"SyncVMISD::PTR_SHRINK", SDT_SyncVMPtrOp, []>;
 
+def SyncVMTrap : SDNode<"SyncVMISD::TRAP", SDTNone,
+    [SDNPHasChain, SDNPOptInGlue]>;
+
 //===----------------------------------------------------------------------===//
 // SyncVM Operand Definitions.
 //===----------------------------------------------------------------------===//
@@ -123,7 +126,10 @@ def init_flag : Operand<i256>, IntImmLeaf<i256, [{
 }
 
 // Operand for printing out a condition code.
-def cc : Operand<i256> {
+def cc : Operand<i256>, IntImmLeaf<i256, [{
+  // TODO: refine this
+  return Imm.isIntN(4) && Imm != 0;
+}]> {
   let PrintMethod = "printCCOperand";
   // TODO: Implement once encoding is defined.
   //let EncoderMethod = "getCCOpValue";
@@ -1203,13 +1209,21 @@ def     : Pat<(store_heapaux GR256:$rs1, GR256:$rs0),
 //===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
-let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in
-def J: IJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t$dest",
+// Conditional jump
+let isTerminator = 1, isBranch = 1, Uses = [Flags] in
+def JC: ICondJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t$dest",
              [(SyncVMbrcc bb:$dest, imm:$cc)]>;
-def : Pat<(br bb:$dst), (J bb:$dst, 0)>;
 
-let isReturn = 1, isTerminator = 1, isBarrier = 1  in
+// Unconditional jump
+let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in
+def J: IJump<10, (ins jmptarget:$dest), "jump\t$dest",
+             [(SyncVMbrcc bb:$dest, 0)]>;
+def : Pat<(br bb:$dst), (J bb:$dst)>;
+
+let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
 def RET   : IRet<7, RFNone, (ins), "ret", [(SyncVMret)]>;
+def PANIC : IRet<7, RFPanic, (ins GR256:$rs0), "ret.panic\t$rs0", []>;
+}
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
 def THROW : IRet<7, RFErr, (ins GR256:$rs0), "revert",
                  [(SyncVMthrow GR256:$rs0)]>;
@@ -1314,7 +1328,7 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
 }
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
-    isCall = 1, isTerminator = 1 in {
+    isCall = 1 in {
 def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call\t$abi, $address, $unwind", [(SyncVMfarcall GR256:$abi, GR256:$address, bb:$unwind)]>;
 def FAR_CALLL  : ICall<80, CFNormal, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, jmptarget:$unwind),
@@ -1347,3 +1361,6 @@ def : Pat<(i256 (SyncVMGAStack tglobaladdr:$dst)), (ADDsrr_p tglobaladdr:$dst, 0
 def : Pat<(i256 (SyncVMGACode tglobaladdr:$dst)), (ADDcrr_p tglobaladdr:$dst, 0, R0)>;
 def : Pat<(i256 (SyncVMGACode texternalsym:$dst)), (ADDcrr_p texternalsym:$dst, 0, R0)>;
 def : Pat<(i256 (SyncVMGACode tblockaddress:$dst)), (ADDcrr_p tblockaddress:$dst, 0, R0)>;
+
+// Exceptions
+def : Pat<(SyncVMTrap), (PANIC R0)>;
