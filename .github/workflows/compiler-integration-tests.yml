@@ -21,6 +21,7 @@ on:
         default: false
 
 
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -30,11 +31,11 @@ jobs:
     runs-on: [self-hosted, ci-runner-compiler]
     steps:
       - uses: AutoModality/action-clean@v1.1.0
-      - uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PK_BOT }}
       - name: Preparing workspace. Setting environment.
         run: |
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
@@ -56,7 +57,7 @@ jobs:
           fi
 
       - name: Preparing workspace. Checkout compiler-tester repository.
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
@@ -65,7 +66,7 @@ jobs:
           path: "compiler-tester"
 
       - name: Preparing workspace. Checkout compiler-llvm repository.
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: compiler-llvm
 
@@ -73,21 +74,14 @@ jobs:
         run: |
           docker-compose pull
           docker-compose up -d zk
-        env:
-          SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
 
-      - name: Preparing workspace. Installing additional packages.
+      - name: Preparing workspace. Prepare docker environment
         run: |
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
           ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
           ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
-
-      - name: Preparing workspace. Setting docker ssh key.
-        run: |
-          ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
-          ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
-          ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
 
       - name: Testing. Building LLVM framework.
         run: |
@@ -95,20 +89,70 @@ jobs:
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
           ./build_gnu.sh ${{ env.LLVM_BUILD_TYPE }}'
 
+      - name: Testing with LLVM Lit default options.
+        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && ninja -C build-target check-llvm'
+
+      - name: Running Lit SyncVM tests with llc verification options.
+        env:
+            LLC_OPTS: >
+              --cgp-verify-bfi-updates
+              --compile-twice
+              --earlycse-debug-hash
+              --loop-distribute-verify
+              --machine-combiner-verify-pattern-order
+              --phicse-debug-hash
+              --reassociate-geps-verify-no-dead-code
+              --safepoint-ir-verifier-print-only
+              --scev-verify-ir
+              --tail-dup-verify
+              --unroll-verify-domtree
+              --vplan-verify-hcfg
+            XFAILS:
+              "CodeGen/SyncVM/memcpy-expansion.ll"
+        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && build-target/bin/llvm-lit -s --xfail "${XFAILS}"  "-Dllc=llc ${LLC_OPTS}"  llvm/test/CodeGen/SyncVM/'
+
+      - name: Running Lit tests with opt verification options.
+        env:
+            OPT_OPTS: >
+              --cgp-verify-bfi-updates
+              --earlycse-debug-hash
+              --loop-distribute-verify
+              --machine-combiner-verify-pattern-order
+              --phicse-debug-hash
+              --scev-verify-ir
+              --tail-dup-verify
+              --unroll-verify-domtree
+              --verify-assumption-cache
+              --verify-cfg-preserved
+              --verify-cfiinstrs
+              --verify-coalescing
+              --verify-dom-info
+              --verify-loop-info
+              --verify-loop-lcssa
+              --verify-machine-dom-info
+              --verify-machineinstrs
+              --verify-memoryssa
+              --verify-misched
+              --verify-regalloc
+              --verify-scev-strict
+              --vplan-verify-hcfg
+            XFAILS:
+              "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
+              Transforms/LoopFlatten/widen-iv2.ll;\
+              Transforms/LoopFusion/simple.ll"
+        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && build-target/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}"  llvm/test/CodeGen/'
+
       - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
         run: |
-          if [ "${{ inputs.skip_slow }}" != "true" ]; then
-            ${DOCKER_CMD} sh -c '
-            cd compiler-tester && \
-            git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-            git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-            export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-            cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}'
-            compiler_exit_code=$?
-          else
-            compiler_exit_code=0
-          fi
+          ${DOCKER_CMD} sh -c '
+          cd compiler-tester && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com: && \
+          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}'
+          compiler_exit_code=$?
           if [ "${compiler_exit_code}" -gt "1" ]; then
             echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
           fi
@@ -116,12 +160,7 @@ jobs:
       - name: Testing. Running segfault.sh.
         if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
         run: |
-          if [ "${{ inputs.skip_slow }}" != "true" ]; then
-            ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
-          fi
-
-      - name: Testing with LLVM Lit default options.
-        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && ninja -C build-target check-llvm'
+          ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
 
       - name: Running Lit SyncVM tests with llc verification options.
         env:
