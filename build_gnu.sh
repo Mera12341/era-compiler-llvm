@@ -5,7 +5,7 @@ set -ex
 ROOT_DIR="${PWD}"
 
 TARGET_BUILD="${ROOT_DIR}/build-target/"
-TARGET_INSTALL='${ROOT_DIR}/llvm-release/'
+TARGET_INSTALL='/opt/llvm-release/'
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     cmake \
