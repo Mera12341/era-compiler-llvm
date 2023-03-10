@@ -14,6 +14,7 @@ if(POLICY CMP0116)
 endif()
 
 add_compile_options(-O1 -g -fsanitize=address -fno-omit-frame-pointer)
+add_link_options(-fsanitize=address)
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
