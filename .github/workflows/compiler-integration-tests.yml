@@ -153,7 +153,7 @@ jobs:
         id: compiler_tester_run
         working-directory: compiler-tester
         run: |
-          cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}
+          cargo run --release --bin compiler-tester -- --llvm-verify-each --mode=${{ env.COMPILER_TESTER_MODE }}
 
       - uses: 8398a7/action-slack@v3
         with:
