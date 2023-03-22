@@ -13,8 +13,8 @@ if(POLICY CMP0116)
   cmake_policy(SET CMP0116 OLD)
 endif()
 
-add_compile_options(-O1 -g -fsanitize=address -fno-omit-frame-pointer)
-add_link_options(-fsanitize=address)
+add_compile_options(-O1 -g -fsanitize=undefined -fno-omit-frame-pointer)
+add_link_options(-fsanitize=undefined)
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
