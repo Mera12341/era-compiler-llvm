@@ -13,6 +13,9 @@ if(POLICY CMP0116)
   cmake_policy(SET CMP0116 OLD)
 endif()
 
+add_compile_options(-O1 -g -fsanitize=undefined -fno-sanitize-recover=undefined -fno-sanitize=vptr -fno-omit-frame-pointer)
+add_link_options( -fsanitize=undefined -fno-sanitize-recover=undefined -fno-sanitize=vptr)
+
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
 if(NOT DEFINED LLVM_VERSION_MAJOR)
