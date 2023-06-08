@@ -1,0 +1,5 @@
+# Ignore list for msan errors while building LLVM
+
+# Sections can be used to limit ignorelist entries to specific sanitizers
+[memory]
+src:*

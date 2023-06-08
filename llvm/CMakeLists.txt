@@ -13,7 +13,7 @@ if(POLICY CMP0116)
   cmake_policy(SET CMP0116 OLD)
 endif()
 
-add_compile_options(-O1 -g -fsanitize=memory -fno-sanitize-recover=memory -fno-omit-frame-pointer)
+add_compile_options(-O1 -g -fsanitize=memory -fno-sanitize-recover=memory -fno-omit-frame-pointer -fsanitize-ignorelist=/home/zekebot//Documents/Code/Compiler-tester_msan/llvm/ignorelist.txt)
 add_link_options( -fsanitize=memory -fno-sanitize-recover=memory)
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
