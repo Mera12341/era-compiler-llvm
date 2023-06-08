@@ -1,5 +1,11 @@
 # Ignore list for msan errors while building LLVM
 
 # Sections can be used to limit ignorelist entries to specific sanitizers
-[memory]
+#[memory]
+src:/home/zekebot/Documents/Code/Compiler-tester_msan/target-llvm/build-final/include/llvm/IR/IntrinsicsDirectX.h
+mainfile:/home/zekebot/Documents/Code/Compiler-tester_msan/target-llvm/build-final/include/llvm/IR/IntrinsicsDirectX.h
+src:/home/zekebot/Documents/Code/Compiler-tester_msan/llvm/llvm/include/llvm/ADT/StringRef.h
+mainfile:/home/zekebot/Documents/Code/Compiler-tester_msan/llvm/llvm/include/llvm/ADT/StringRef.h
+
 src:*
+fun:*
