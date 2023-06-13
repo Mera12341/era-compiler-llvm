@@ -14,6 +14,9 @@ function(add_llvm_target_unittest test_dir_name)
   add_llvm_unittest(${test_dir_name} DISABLE_LLVM_LINK_LLVM_DYLIB ${ARGN})
 endfunction()
 
+add_link_options(-L/home/zekebot/Documents/Code/External_Code/Llvm-15.0.4_for_libcxx/build_libcxx/lib/x86_64-unknown-linux-gnu/)
+
+
 add_subdirectory(ADT)
 add_subdirectory(Analysis)
 add_subdirectory(AsmParser)
