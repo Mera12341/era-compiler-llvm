@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: MIT
 
 
-GCC_VERSION = /opt/homebrew/opt/llvm/bin/clang;
+CLANG_ANALYZER_EXEC = /opt/homebrew/opt/llvm/bin/clang;
+
 
 // Apple Clang - Address Sanitizer
 CLANG_ADDRESS_SANITIZER_CONTAINER_OVERFLOW = YES
