@@ -4,6 +4,7 @@
 
 
 CLANG_ANALYZER_EXEC = /opt/homebrew/opt/llvm/bin/clang;
+// CLANG_ANALYZER_SECURITY_BUFFER_OVERFLOW_EXPERIMENTAL = YES  // Currently causes “error: no analyzer checkers or packages are associated with 'core.experimental.Overflow'”
 
 
 // Apple Clang - Address Sanitizer
