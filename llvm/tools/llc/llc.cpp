@@ -57,10 +57,6 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include <memory>
-
-#include <pthread.h>
-
-
 using namespace llvm;
 
 static codegen::RegisterCodeGenFlags CGF;
@@ -342,36 +338,9 @@ struct LLCDiagnosticHandler : public DiagnosticHandler {
   }
 };
 
-// Flash tsan test
-
-void *Thread1(void *x);
-void *Thread2(void *x);
-
-int Global;
-
-void *Thread1(void *x) {
-  Global++;
-  return NULL;
-}
-
-void *Thread2(void *x) {
-  Global--;
-  return NULL;
-}
-
-
 // main - Entry point for the llc compiler.
 //
 int main(int argc, char **argv) {
-    
-  // Flash tsan test
-    pthread_t t[2];
-    pthread_create(&t[0], NULL, Thread1, NULL);
-    pthread_create(&t[1], NULL, Thread2, NULL);
-    pthread_join(t[0], NULL);
-    pthread_join(t[1], NULL);
-
-    
   InitLLVM X(argc, argv);
 
   // Enable debug stream buffering.
