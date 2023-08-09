@@ -51,7 +51,10 @@ jobs:
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
-          apt install -y ninja-build
+          apt install -y ninja-build snapd
+          snap install valgrind --classic
+          which -a valgrind
+          valgrind --version 
 
       - name: Preparing LLVM.lock (pull request)
         if: github.event_name == 'pull_request'
