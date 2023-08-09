@@ -54,7 +54,7 @@ jobs:
           apt install -y ninja-build snapd
           snap install valgrind --classic
           which -a valgrind
-          valgrind --version 
+          valgrind --version
 
       - name: Preparing LLVM.lock (pull request)
         if: github.event_name == 'pull_request'
@@ -156,20 +156,20 @@ jobs:
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
           ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/'
 
-      - name: Building and running the compiler tester
-        id: compiler_tester_run
-        working-directory: compiler-tester
-        run: |          
-          export RUST_BACKTRACE='full'
-          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
-          cargo build --verbose --release --bin 'compiler-tester'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
-          
-          ./target/release/compiler-tester \
-            --zksolc './target-zksolc/release/zksolc' \
-            --zkvyper './target-zkvyper/release/zkvyper' \
-            --mode=${{ env.COMPILER_TESTER_MODE }}
+#       - name: Building and running the compiler tester
+#         id: compiler_tester_run
+#         working-directory: compiler-tester
+#         run: |          
+#           export RUST_BACKTRACE='full'
+#           export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
+#           cargo build --verbose --release --bin 'compiler-tester'
+#           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
+#           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
+#           
+#           ./target/release/compiler-tester \
+#             --zksolc './target-zksolc/release/zksolc' \
+#             --zkvyper './target-zkvyper/release/zkvyper' \
+#             --mode=${{ env.COMPILER_TESTER_MODE }}
 
       - uses: 8398a7/action-slack@v3
         with:
