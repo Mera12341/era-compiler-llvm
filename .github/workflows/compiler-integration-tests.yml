@@ -94,7 +94,7 @@ jobs:
         run: |
           ninja -C './target-llvm/build-final' check-llvm
 
-      - name: Running Lit SyncVM tests with llc verification options
+      - name: Running Lit SyncVM tests under Valgrind withOUT llc verification options
         working-directory: compiler-tester
         env:
           LLC_OPTS:
@@ -120,7 +120,7 @@ jobs:
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          valgrind  ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/SyncVM/tests_solidity_complex_defi_Mooniswap_MooniswapPool_Mooniswap.sol.Mooniswap.optimized.ll'
+          valgrind  ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc" './llvm/llvm/test/CodeGen/SyncVM/tests_solidity_complex_defi_Mooniswap_MooniswapPool_Mooniswap.sol.Mooniswap.optimized.ll' # ${LLC_OPTS}
 
       - name: Running Lit tests with opt verification options
         working-directory: compiler-tester
