@@ -119,7 +119,7 @@ jobs:
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/SyncVM/'
+          valgrind  ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/SyncVM/tests_solidity_complex_defi_Mooniswap_MooniswapPool_Mooniswap.sol.Mooniswap.optimized.ll'
 
       - name: Running Lit tests with opt verification options
         working-directory: compiler-tester
