@@ -1,3 +1,5 @@
+; RUN: llc < %s | FileCheck %s
+
 ; ModuleID = 'tests/solidity/complex/defi/Mooniswap/MooniswapPool/Mooniswap.sol:Mooniswap'
 source_filename = "tests/solidity/complex/defi/Mooniswap/MooniswapPool/Mooniswap.sol:Mooniswap"
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
@@ -5,7 +7,9 @@ target triple = "syncvm-unknown-unknown"
 
 @calldatasize = private unnamed_addr global i256 0
 @returndatasize = private unnamed_addr global i256 0
+; CHECK: returndatasize
 @ptr_calldata = private unnamed_addr global ptr addrspace(3) null
+; CHECK: ptr_calldata
 @ptr_return_data = private unnamed_addr global ptr addrspace(3) null
 
 ; Function Attrs: nofree nosync nounwind readnone
