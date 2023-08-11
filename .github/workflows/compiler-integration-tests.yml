@@ -59,8 +59,8 @@ jobs:
           apt-get update
           apt install -y ninja-build snapd
           
-#           systemctl restart snapd snapd.socket
-#           snap install valgrind --classic
+          # systemctl restart snapd snapd.socket
+          # snap install valgrind --classic
           which -a valgrind
           valgrind --version
 
