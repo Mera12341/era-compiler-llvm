@@ -25,7 +25,7 @@ jobs:
   default:
     runs-on: [ self-hosted, ci-runner-compiler ]
     container:
-      image: matterlabs/llvm_runner:f5f1327
+      image: matterlabs/llvm_runner:latest
       credentials:
         username: ${{ secrets.DOCKERHUB_USER }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
