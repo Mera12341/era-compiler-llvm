@@ -63,6 +63,7 @@ jobs:
           # snap install valgrind --classic
           which -a valgrind
           valgrind --version
+          clang --version
 
       - name: Preparing LLVM.lock (pull request)
         if: github.event_name == 'pull_request'
@@ -127,7 +128,7 @@ jobs:
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          valgrind  ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc" './llvm/llvm/test/CodeGen/SyncVM/tests_solidity_complex_defi_Mooniswap_MooniswapPool_Mooniswap.sol.Mooniswap.optimized.ll' # ${LLC_OPTS}
+          valgrind   -q --trace-children=yes --error-exitcode=42  ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc" './llvm/llvm/test/CodeGen/SyncVM/tests_solidity_complex_defi_Mooniswap_MooniswapPool_Mooniswap.sol.Mooniswap.optimized.ll' # ${LLC_OPTS}
 
       - name: Running Lit tests with opt verification options
         working-directory: compiler-tester
