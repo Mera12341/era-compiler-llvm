@@ -57,7 +57,7 @@ jobs:
           cat /etc/*-release
 
           apt-get update
-          apt install -y ninja-build valgrind
+          apt install -y ninja-build python3.10 valgrind
           
           # systemctl restart snapd snapd.socket
           # snap install valgrind --classic
