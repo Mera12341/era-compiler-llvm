@@ -57,7 +57,7 @@ jobs:
           cat /etc/*-release
           
           which -a python3
-          which -a python
+          # which -a python
 
           apt-get update
           apt install -y ninja-build python3.10 valgrind
@@ -69,7 +69,7 @@ jobs:
           clang --version
           which -a python3
           python3 --version
-          which -a python
+          # which -a python
           python --version
 
       - name: Preparing LLVM.lock (pull request)
