@@ -55,6 +55,9 @@ jobs:
           uname -a
           lsb_release -a  # l
           cat /etc/*-release
+          
+          which -a python3
+          which -a python
 
           apt-get update
           apt install -y ninja-build python3.10 valgrind
@@ -64,6 +67,10 @@ jobs:
           which -a valgrind
           valgrind --version
           clang --version
+          which -a python3
+          python3 --version
+          which -a python
+          python --version
 
       - name: Preparing LLVM.lock (pull request)
         if: github.event_name == 'pull_request'
