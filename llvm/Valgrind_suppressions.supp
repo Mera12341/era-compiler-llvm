@@ -1,3 +1,4 @@
+# SyncVM/icmp.ll, llvm::raw_ostream::flush() (llvm/llvm/include/llvm/Support/raw_ostream.h:188)
 {
    llvm::raw_ostream::flush
    Memcheck:Addr8
@@ -68,4 +69,65 @@
    fun:_ZN4llvm10AsmPrinterD1Ev
 }
 
+{
+   assertion SelectionDAG.cpp:9917
+   Memcheck:Cond
+   fun:_ZN4llvm12SelectionDAG17transferDbgValuesENS_7SDValueES1_jjb
+   fun:_ZN4llvm12SelectionDAG18ReplaceAllUsesWithEPNS_6SDNodeEPKNS_7SDValueE
+   fun:_ZN12_GLOBAL__N_120SelectionDAGLegalize11ReplaceNodeEPN4llvm6SDNodeEPKNS1_7SDValueE
+   fun:_ZN12_GLOBAL__N_120SelectionDAGLegalize10ExpandNodeEPN4llvm6SDNodeE
+   fun:_ZN12_GLOBAL__N_120SelectionDAGLegalize10LegalizeOpEPN4llvm6SDNodeE
+   fun:_ZN4llvm12SelectionDAG8LegalizeEv
+   fun:_ZN4llvm16SelectionDAGISel17CodeGenAndEmitDAGEv
+   fun:_ZN4llvm16SelectionDAGISel16SelectBasicBlockENS_14ilist_iteratorINS_12ilist_detail12node_optionsINS_11InstructionELb1ELb0EvEELb0ELb1EEES6_Rb
+   fun:_ZN4llvm16SelectionDAGISel20SelectAllBasicBlocksERKNS_8FunctionE
+   fun:_ZN4llvm16SelectionDAGISel20runOnMachineFunctionERNS_15MachineFunctionE
+   fun:_ZN4llvm19MachineFunctionPass13runOnFunctionERNS_8FunctionE
+   fun:_ZN4llvm13FPPassManager13runOnFunctionERNS_8FunctionE
+}
+
+# selexpansion-bug.ll #2 upstream llvm::SDValue::operator== llvm/include/llvm/CodeGen/SelectionDAGNodes.h:160
+
+{
+   upstream llvm::SDValue::operator== 
+   Memcheck:Cond
+   fun:_ZNK4llvm7SDValueeqERKS0_
+   fun:_ZN4llvm12SelectionDAG17transferDbgValuesENS_7SDValueES1_jjb
+   fun:_ZN4llvm12SelectionDAG18ReplaceAllUsesWithEPNS_6SDNodeEPKNS_7SDValueE
+   fun:_ZN12_GLOBAL__N_120SelectionDAGLegalize11ReplaceNodeEPN4llvm6SDNodeEPKNS1_7SDValueE
+   fun:_ZN12_GLOBAL__N_120SelectionDAGLegalize10ExpandNodeEPN4llvm6SDNodeE
+   fun:_ZN12_GLOBAL__N_120SelectionDAGLegalize10LegalizeOpEPN4llvm6SDNodeE
+   fun:_ZN4llvm12SelectionDAG8LegalizeEv
+   fun:_ZN4llvm16SelectionDAGISel17CodeGenAndEmitDAGEv
+   fun:_ZN4llvm16SelectionDAGISel16SelectBasicBlockENS_14ilist_iteratorINS_12ilist_detail12node_optionsINS_11InstructionELb1ELb0EvEELb0ELb1EEES6_Rb
+   fun:_ZN4llvm16SelectionDAGISel20SelectAllBasicBlocksERKNS_8FunctionE
+   fun:_ZN4llvm16SelectionDAGISel20runOnMachineFunctionERNS_15MachineFunctionE
+   fun:_ZN4llvm19MachineFunctionPass13runOnFunctionERNS_8FunctionE
+}
+
+
+# SyncVM/selexpansion-bug.ll #3 llvm::SelectionDAG::transferDbgValues(llvm::SDValue, llvm::SDValue, unsigned int, unsigned int, bool) (llvm/llvm/lib/CodeGen/SelectionDAG/SelectionDAG.cpp:9922)
+# Upstream TODOs:
+#   // PR35338
+#   // TODO: assert(From != To && "Redundant dbg value transfer");
+#   // TODO: assert(FromNode != ToNode && "Intranode dbg value transfer");
+#   if (From == To || FromNode == ToNode)
+#     return;
+
+{
+   Upstream TODOs PR35338
+   Memcheck:Cond
+   fun:_ZN4llvm12SelectionDAG17transferDbgValuesENS_7SDValueES1_jjb
+   fun:_ZN4llvm12SelectionDAG18ReplaceAllUsesWithEPNS_6SDNodeEPKNS_7SDValueE
+   fun:_ZN12_GLOBAL__N_120SelectionDAGLegalize11ReplaceNodeEPN4llvm6SDNodeEPKNS1_7SDValueE
+   fun:_ZN12_GLOBAL__N_120SelectionDAGLegalize10ExpandNodeEPN4llvm6SDNodeE
+   fun:_ZN12_GLOBAL__N_120SelectionDAGLegalize10LegalizeOpEPN4llvm6SDNodeE
+   fun:_ZN4llvm12SelectionDAG8LegalizeEv
+   fun:_ZN4llvm16SelectionDAGISel17CodeGenAndEmitDAGEv
+   fun:_ZN4llvm16SelectionDAGISel16SelectBasicBlockENS_14ilist_iteratorINS_12ilist_detail12node_optionsINS_11InstructionELb1ELb0EvEELb0ELb1EEES6_Rb
+   fun:_ZN4llvm16SelectionDAGISel20SelectAllBasicBlocksERKNS_8FunctionE
+   fun:_ZN4llvm16SelectionDAGISel20runOnMachineFunctionERNS_15MachineFunctionE
+   fun:_ZN4llvm19MachineFunctionPass13runOnFunctionERNS_8FunctionE
+   fun:_ZN4llvm13FPPassManager13runOnFunctionERNS_8FunctionE
+}
 
