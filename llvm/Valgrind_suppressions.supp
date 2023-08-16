@@ -1,0 +1,16 @@
+{
+   raw_ostream::flush
+   Memcheck:Addr8
+   fun:_ZN4llvm11raw_ostream5flushEv
+   fun:_ZN4llvm11raw_ostream13SetUnbufferedEv
+   fun:_ZN4llvm21formatted_raw_ostream13releaseStreamEv
+   fun:_ZN4llvm21formatted_raw_ostreamD2Ev
+   fun:_ZN4llvm21formatted_raw_ostreamD0Ev
+   fun:_ZNKSt14default_deleteIN4llvm21formatted_raw_ostreamEEclEPS1_
+   fun:_ZNSt10unique_ptrIN4llvm21formatted_raw_ostreamESt14default_deleteIS1_EED2Ev
+   fun:_ZN12_GLOBAL__N_113MCAsmStreamerD2Ev
+   fun:_ZN12_GLOBAL__N_113MCAsmStreamerD0Ev
+   fun:_ZNKSt14default_deleteIN4llvm10MCStreamerEEclEPS1_
+   fun:_ZNSt10unique_ptrIN4llvm10MCStreamerESt14default_deleteIS1_EED2Ev
+   fun:_ZN4llvm10AsmPrinterD1Ev
+}
