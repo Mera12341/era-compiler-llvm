@@ -131,8 +131,8 @@
    fun:_ZN4llvm13FPPassManager13runOnFunctionERNS_8FunctionE
 }
 
-# Google NOTE: You can safely ignore the above warning unless this call should not happen.
 # Google Unit Tests have their usual difficulties, so automatic suppression generation doesn’t work.
+# Google NOTE: You can safely ignore the above warning unless this call should not happen.
 # I’m not sure how much difference this manual suppression makes.
 {
   gtest-printers.cc
@@ -140,3 +140,22 @@
   src:gtest-printers.cc
   src:gtest-printers.h
 }
+
+
+{
+   Python llvm-original-di-preservation/basic.test
+   Memcheck:Cond
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+   obj:/usr/bin/python3.10
+}
+
