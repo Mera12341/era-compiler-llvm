@@ -4,6 +4,7 @@ echo
 echo =========================
 date
 
+set -e
 pushd ..
 
 cargo run --bin compiler-tester -- --mode='M0B0 0.8.20'  --path='tests/solidity/simple/default.sol' --load-system-contracts system-contracts-stable-build -D    --zksolc '../compiler-solidity/target/debug/zksolc'  --zkvyper '../compiler-vyper/target/debug/zkvyper'
