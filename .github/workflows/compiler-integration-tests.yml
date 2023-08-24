@@ -55,19 +55,14 @@ jobs:
           uname -a
           lsb_release -a  # l
           cat /etc/*-release
-          
-          which -a python3
 
           apt-get update
-          apt install -y ninja-build python3.10 valgrind
+          apt install -y ninja-build valgrind   # snapd
           
-          # systemctl restart snapd snapd.socket
-          # snap install valgrind --classic
+#           systemctl restart snapd snapd.socket
+#           snap install valgrind --classic
           which -a valgrind
           valgrind --version
-          clang --version
-          which -a python3
-          python3 --version
 
       - name: Preparing LLVM.lock (pull request)
         if: github.event_name == 'pull_request'
@@ -106,7 +101,7 @@ jobs:
         run: |
           ninja -C './target-llvm/build-final' check-llvm
 
-      - name: Running Lit SyncVM tests under Valgrind withOUT llc verification options
+      - name: Running Lit SyncVM tests NOT under Valgrind with[OUT] llc verification options
         working-directory: compiler-tester
         env:
           LLC_OPTS:
@@ -132,7 +127,7 @@ jobs:
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          valgrind   -q --trace-children=yes --error-exitcode=42  ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc" './llvm/llvm/test/CodeGen/SyncVM/tests_solidity_complex_defi_Mooniswap_MooniswapPool_Mooniswap.sol.Mooniswap.optimized.ll' # ${LLC_OPTS}
+          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/SyncVM/'
 
       - name: Running Lit tests with opt verification options
         working-directory: compiler-tester
@@ -169,20 +164,32 @@ jobs:
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
           ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/'
 
-#       - name: Building and running the compiler tester
-#         id: compiler_tester_run
-#         working-directory: compiler-tester
-#         run: |          
-#           export RUST_BACKTRACE='full'
-#           export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
-#           cargo build --verbose --release --bin 'compiler-tester'
-#           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
-#           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
-#           
-#           ./target/release/compiler-tester \
-#             --zksolc './target-zksolc/release/zksolc' \
-#             --zkvyper './target-zkvyper/release/zkvyper' \
-#             --mode=${{ env.COMPILER_TESTER_MODE }}
+      - name: Building and running (limited and changed) the compiler tester
+        id: compiler_tester_run
+        working-directory: compiler-tester
+        run: |          
+          export RUST_BACKTRACE='full'
+          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
+          cargo build --verbose --release --bin 'compiler-tester'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
+          
+          ./target/release/compiler-tester \
+            --zksolc './target-zksolc/release/zksolc' \
+            --zkvyper './target-zkvyper/release/zkvyper' \
+            --mode='M0B0 0.8.20' \
+            --path='tests/solidity/simple/default.sol' \
+            --load-system-contracts system-contracts-stable-build -D
+
+
+      - name: Manually iterating llc under Valgrind
+        working-directory: compiler-tester
+        run: |          
+          set -e
+          for file in ./debug/*.unoptimized.ll; do
+            valgrind   -q --trace-children=yes --error-exitcode=42 ./target-llvm/build-final/bin/llc -O3 "${file}" -o test.zasm
+          done   #TODO absolute path for --suppressions
+
 
       - uses: 8398a7/action-slack@v3
         with:
