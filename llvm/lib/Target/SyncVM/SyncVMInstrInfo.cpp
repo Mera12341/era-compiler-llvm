@@ -95,18 +95,13 @@ MachineInstr::mop_iterator in1Iterator(MachineInstr &MI) {
 }
 
 MachineInstr::mop_iterator out0Iterator(MachineInstr &MI) {
-  auto Begin = MI.operands_begin();
-  if (hasRROutAddressingMode(MI) || isSelect(MI))
-    return Begin;
-  return in1Iterator(MI) + argumentSize(ArgumentKind::In1, MI);
+  if (hasSROutAddressingMode(MI))
+    return in1Iterator(MI) + argumentSize(ArgumentKind::In1, MI);
+  return MI.operands_begin();
 }
 
 MachineInstr::mop_iterator out1Iterator(MachineInstr &MI) {
   return MI.operands_begin() + MI.getNumExplicitDefs() - 1;
-}
-
-MachineInstr::const_mop_iterator ccIterator(const MachineInstr &MI) {
-  return MI.operands_begin() + (MI.getNumExplicitOperands() - 1);
 }
 
 MachineInstr::mop_iterator ccIterator(MachineInstr &MI) {
@@ -201,12 +196,21 @@ bool hasSRInAddressingMode(unsigned Opcode) {
   return (unsigned)mapSRInputTo(Opcode, OperandAM_3) == Opcode;
 }
 
+bool hasAnyInAddressingMode(unsigned Opcode) {
+  return hasRRInAddressingMode(Opcode) || hasIRInAddressingMode(Opcode) ||
+         hasCRInAddressingMode(Opcode) || hasSRInAddressingMode(Opcode);
+}
+
 bool hasRROutAddressingMode(unsigned Opcode) {
   return withStackResult(Opcode) != -1;
 }
 
 bool hasSROutAddressingMode(unsigned Opcode) {
   return withRegisterResult(Opcode) != -1;
+}
+
+bool hasAnyOutAddressingMode(unsigned Opcode) {
+  return hasRROutAddressingMode(Opcode) || hasSROutAddressingMode(Opcode);
 }
 
 // TODO: Implement in via td.
@@ -998,7 +1002,7 @@ MachineBasicBlock::iterator SyncVMInstrInfo::insertOutlinedCall(
   return It;
 }
 
-void SyncVMInstrInfo::fixupPostOutline(
+void SyncVMInstrInfo::fixupPostOutlining(
     std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
         &FixupFunctions) const {
   // First, adjust all outlined functions with MachineOutlinerDefault strategy.
