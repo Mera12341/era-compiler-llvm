@@ -167,6 +167,5 @@
    obj:*/solc-bin/solc-0.7.6
    obj:*/solc-bin/solc-0.7.6
    ...
-   fun:(below main)
 }
 
