@@ -163,16 +163,10 @@
    CPR-1321 solc-0.7.6 overlap in memcpy_chk
    Memcheck:Overlap
    fun:__memcpy_chk
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
-   obj:/home/zekebot/Documents/Code/compiler-tester/solc-bin/solc-0.7.6
+   obj:*/solc-bin/solc-0.7.6
+   obj:*/solc-bin/solc-0.7.6
+   obj:*/solc-bin/solc-0.7.6
+   ...
    fun:(below main)
 }
 
