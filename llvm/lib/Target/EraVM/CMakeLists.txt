@@ -2,6 +2,9 @@ add_llvm_component_group(EraVM)
 
 set(LLVM_TARGET_DEFINITIONS EraVM.td)
 
+link_libraries("LLVMMC")
+#LIBS += -lLLVMMC
+
 tablegen(LLVM EraVMGenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM EraVMGenAsmWriter.inc -gen-asm-writer)
 tablegen(LLVM EraVMGenCallingConv.inc -gen-callingconv)
