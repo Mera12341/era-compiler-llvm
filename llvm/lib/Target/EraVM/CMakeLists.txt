@@ -2,7 +2,7 @@ add_llvm_component_group(EraVM)
 
 set(LLVM_TARGET_DEFINITIONS EraVM.td)
 
-link_libraries("LLVMMC")
+link_libraries("LLVMAnalysis" "LLVMAsmPrinter" "LLVMCodeGen" "LLVMCore" "LLVMIPO" "LLVMMC" "LLVMPasses" "LLVMScalar" "LLVMSelectionDAG" "LLVMSupport" "LLVMTarget" "LLVMTransformUtils")
 #LIBS += -lLLVMMC
 
 tablegen(LLVM EraVMGenAsmMatcher.inc -gen-asm-matcher)
