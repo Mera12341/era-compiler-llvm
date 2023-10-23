@@ -2,8 +2,6 @@ add_llvm_component_group(EraVM)
 
 set(LLVM_TARGET_DEFINITIONS EraVM.td)
 
-link_libraries("LLVMAnalysis" "LLVMAsmPrinter" "LLVMCodeGen" "LLVMCore" "LLVMipo" "LLVMMC" "LLVMPasses" "LLVMScalarOpts" "LLVMSelectionDAG" "LLVMSupport" "LLVMTarget" "LLVMTransformUtils")
-#LIBS += -lLLVMMC
 
 tablegen(LLVM EraVMGenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM EraVMGenAsmWriter.inc -gen-asm-writer)
@@ -79,3 +77,5 @@ add_subdirectory(TargetInfo)
 add_subdirectory(MCTargetDesc)
 add_subdirectory(AsmParser)
 add_subdirectory(Disassembler)
+
+link_libraries("LLVMAnalysis" "LLVMAsmPrinter" "LLVMCodeGen" "LLVMCore" "LLVMipo" "LLVMMC" "LLVMPasses" "LLVMScalarOpts" "LLVMSelectionDAG" "LLVMSupport" "LLVMTarget" "LLVMTransformUtils")
