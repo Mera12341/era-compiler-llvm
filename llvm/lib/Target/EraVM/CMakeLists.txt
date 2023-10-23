@@ -78,6 +78,4 @@ add_subdirectory(MCTargetDesc)
 add_subdirectory(AsmParser)
 add_subdirectory(Disassembler)
 
-if (BUILD_SHARED_LIBS)  # hack
-  link_libraries("LLVMAnalysis" "LLVMAsmPrinter" "LLVMCodeGen" "LLVMCore" "LLVMipo" "LLVMMC" "LLVMPasses" "LLVMScalarOpts" "LLVMSelectionDAG" "LLVMSupport" "LLVMTarget" "LLVMTransformUtils")
-endif() # BUILD_SHARED_LIBS
+link_libraries("LLVMAnalysis" "LLVMAsmPrinter" "LLVMCodeGen" "LLVMCore" "LLVMipo" "LLVMMC" "LLVMPasses" "LLVMScalarOpts" "LLVMSelectionDAG" "LLVMSupport" "LLVMTarget" "LLVMTransformUtils")
