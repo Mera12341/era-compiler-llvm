@@ -2,10 +2,6 @@ add_llvm_component_group(EraVM)
 
 set(LLVM_TARGET_DEFINITIONS EraVM.td)
 
-if (BUILD_SHARED_LIBS)  # hack
-  link_libraries("LLVMAnalysis" "LLVMAsmPrinter" "LLVMCodeGen" "LLVMCore" "LLVMipo" "LLVMMC" "LLVMPasses" "LLVMScalarOpts" "LLVMSelectionDAG" "LLVMSupport" "LLVMTarget" "LLVMTransformUtils")
-endif() # BUILD_SHARED_LIBS
-
 
 tablegen(LLVM EraVMGenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM EraVMGenAsmWriter.inc -gen-asm-writer)
@@ -25,6 +21,10 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/EraVMRT.inc ${RT_CONTENT})
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/eravm-stdlib.ll STDLIB_CONTENT)
 set (STDLIB_CONTENT "R\"(${STDLIB_CONTENT})\"")
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/EraVMStdLib.inc ${STDLIB_CONTENT})
+
+if (BUILD_SHARED_LIBS)  # hack
+  link_libraries("LLVMAnalysis" "LLVMAsmPrinter" "LLVMCodeGen" "LLVMCore" "LLVMipo" "LLVMMC" "LLVMPasses" "LLVMScalarOpts" "LLVMSelectionDAG" "LLVMSupport" "LLVMTarget" "LLVMTransformUtils")
+endif() # BUILD_SHARED_LIBS
 
 add_llvm_target(EraVMCodeGen
   EraVMAddConditions.cpp
