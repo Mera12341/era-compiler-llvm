@@ -15,6 +15,7 @@
 // Classes and defs used for relation maps.
 //===----------------------------------------------------------------------===//
 
+class Migration;
 class PredRel;
 class PseudoRel; // map: `_p` -> `_s`
 class FlagRel; // map: `_s` -> `_v`
@@ -191,6 +192,9 @@ class EraVMInstruction<
   let OutOperandList    = outs;
   let InOperandList     = ins;
   let Pattern           = pattern;
+  bit IsPseudoArith = 1;
+  bit isCodeGenOnly = 1;
+  bit IsLegacy = 1;
 }
 
 class IForm <

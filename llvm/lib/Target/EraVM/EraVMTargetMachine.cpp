@@ -249,6 +249,7 @@ bool EraVMPassConfig::addInstSelector() {
 
 void EraVMPassConfig::addPreRegAlloc() {
   addPass(createEraVMAddConditionsPass());
+  addPass(createEraVMLegacyMappingPass());
   addPass(createEraVMStackAddressConstantPropagationPass());
   addPass(createEraVMBytesToCellsPass());
   if (TM->getOptLevel() != CodeGenOpt::None) {

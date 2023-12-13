@@ -23,6 +23,7 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/EraVMStdLib.inc ${STDLIB_CONTENT})
 
 add_llvm_target(EraVMCodeGen
   EraVMAddConditions.cpp
+  EraVMLegacyMapping.cpp
   EraVMAliasAnalysis.cpp
   EraVMAllocaHoisting.cpp
   EraVMAlwaysInline.cpp

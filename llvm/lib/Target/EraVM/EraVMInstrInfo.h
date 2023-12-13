@@ -27,6 +27,7 @@ namespace llvm {
 namespace EraVM {
 
 int getPseudoMapOpcode(uint16_t);
+int getNewOpcode(uint16_t);
 int getFlagSettingOpcode(uint16_t);
 int getNonFlagSettingOpcode(uint16_t);
 int withRegisterResult(uint16_t);
