@@ -50,9 +50,9 @@ foo:
 
 ; CHECK:  add  @global[r1+65535], r2, r3
 ; CHECK:  add  @global[r0+1], r2, r3
-; CHECK:  add  @global[r1+0], r2, r3
+; CHECK:  add  @global[r1], r2, r3
 ; CHECK:  add  @global[r0+65535], r2, r3
-; CHECK:  add  @global[r0+0], r2, r3
+; CHECK:  add  @global[0], r2, r3
 
 ; CHECK:  add  @global[r0+1], r1, r2
 ; CHECK:  add  @global[r0+65535], r1, r2

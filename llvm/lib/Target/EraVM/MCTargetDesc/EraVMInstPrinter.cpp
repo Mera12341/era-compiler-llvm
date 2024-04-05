@@ -111,56 +111,30 @@ void EraVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
 
 void EraVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
                                        raw_ostream &O) {
-  const MCOperand &Base = MI->getOperand(OpNo);
-  const MCOperand &Disp = MI->getOperand(OpNo + 1);
+  unsigned BaseReg = 0;
+  const MCSymbol *Symbol = nullptr;
+  int Addend = 0;
+  EraVM::analyzeMCOperandsCode(*MI, OpNo, BaseReg, Symbol, Addend);
 
-  // print constant pool memory
-  if (Base.isExpr()) {
-    Base.getExpr()->print(O, &MAI);
+  if (Symbol)
+    O << "@" << Symbol->getName();
+  else
+    O << "code";
+
+  if (!BaseReg)
+    BaseReg = EraVM::R0;
+
+  if (BaseReg == EraVM::R0 && Addend == 0) {
     O << "[0]";
-    return;
-  }
-
-  if (Base.isReg() && Disp.isImm()) {
-    if (Disp.getImm() == 0)
-      O << "code[" << getRegisterName(Base.getReg()) << "]";
-    else
-      O << "code[" << getRegisterName(Base.getReg()) << "+" << Disp.getImm()
-        << "]";
-    return;
-  }
-
-  // Print displacement first
-  if (Disp.isExpr()) {
-    const auto *expr = Disp.getExpr();
-    // handle the case where symbol has an offset
-    if (const auto *binExpr = dyn_cast<MCBinaryExpr>(expr)) {
-      assert(binExpr->getOpcode() == MCBinaryExpr::Add &&
-             "Unexpected binary expression type, check EraVMMCInstLower "
-             "for reference.");
-      const auto *sym = cast<MCSymbolRefExpr>(binExpr->getLHS());
-      const auto *offset = cast<MCConstantExpr>(binExpr->getRHS());
-      // print symbol
-      O << '@' << sym->getSymbol().getName() << "[";
-      // if there is a reg, print it before offset
-      if (Base.isReg())
-        O << getRegisterName(Base.getReg()) << "+";
-      // finally, print offset
-      O << offset->getValue() << "]";
-    } else if (const auto *symExpr = dyn_cast<MCSymbolRefExpr>(expr)) {
-      // handle the case where symbol has no imm offset but could have a reg
-      // index
-      if (Base.isReg())
-        O << '@' << symExpr->getSymbol().getName() << "["
-          << getRegisterName(Base.getReg()) << "]";
-      else
-        O << '@' << symExpr->getSymbol().getName() << "[0]";
+  } else {
+    O << "[";
+    O << getRegisterName(BaseReg);
+    if (Addend) {
+      O << (Addend < 0 ? "-" : "+");
+      O << std::abs(Addend);
     }
-    return;
+    O << "]";
   }
-
-  assert(Disp.isImm() && "Expected immediate in displacement field");
-  O << Disp.getImm();
 }
 
 template <bool IsInput>
