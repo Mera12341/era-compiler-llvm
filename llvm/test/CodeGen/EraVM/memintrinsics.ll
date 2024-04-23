@@ -16,7 +16,7 @@ define fastcc void @huge-copysize0(i256 addrspace(0)* %dest, i256 addrspace(0)* 
 ; CHECK:   shr.s   5, r1, [[SHIFTED_OFFSET0_DST:r[0-9]+]]
 ; CHECK:   add     [[LOADED_VALUE0]], r0, stack[[[SHIFTED_OFFSET0_DST]]]
 ; CHECK:   add     1, [[INDEX0]], [[INDEX0]]
-; CHECK:   sub.s!  @CPI0_0[0], [[INDEX0]], r4
+; CHECK:   sub.s!  @CPI0_0[0], [[INDEX0]], r0
 ; CHECK:   jump.lt @.BB0_1
 ; CHECK:   ret
   call void @llvm.memcpy.p0i256.p0i256.i256(i256 addrspace(0)* %dest, i256 addrspace(0)* %src, i256 81129638414606681695789005144064, i1 false)

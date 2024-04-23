@@ -16,7 +16,7 @@ define void @loop1(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size
 ; CHECK-NEXT:    ld.1.inc r2, r5, r2
 ; CHECK-NEXT:    st.1.inc r1, r5, r1
 ; CHECK-NEXT:    add 1, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r5
+; CHECK-NEXT:    sub! r4, r3, r0
 ; CHECK-NEXT:    jump.lt @.BB0_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret
@@ -48,7 +48,7 @@ define void @loop2(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size
 ; CHECK-NEXT:    ld.1.inc r2, r5, r2
 ; CHECK-NEXT:    st.1.inc r1, r5, r1
 ; CHECK-NEXT:    add 1, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r5
+; CHECK-NEXT:    sub! r4, r3, r0
 ; CHECK-NEXT:    jump.lt @.BB1_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret
@@ -84,7 +84,7 @@ define void @loop3(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size
 ; CHECK-NEXT:    ld.1.inc r4, r6, r4
 ; CHECK-NEXT:    st.1 r5, r6
 ; CHECK-NEXT:    add 2, r2, r2
-; CHECK-NEXT:    sub! r2, r3, r5
+; CHECK-NEXT:    sub! r2, r3, r0
 ; CHECK-NEXT:    jump.lt @.BB2_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret
@@ -118,7 +118,7 @@ define void @loop4([10 x i256] addrspace(1)* %dest, [10 x i256] addrspace(1)* %s
 ; CHECK-NEXT:    ld.1.inc r2, r5, r2
 ; CHECK-NEXT:    st.1.inc r1, r5, r1
 ; CHECK-NEXT:    add 1, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r5
+; CHECK-NEXT:    sub! r4, r3, r0
 ; CHECK-NEXT:    jump.lt @.BB3_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret
@@ -149,7 +149,7 @@ define void @loop5([10 x i256] addrspace(1)* %dest, [10 x i256] addrspace(1)* %s
 ; CHECK-NEXT:    ld.1.inc r2, r5, r2
 ; CHECK-NEXT:    st.1.inc r1, r5, r1
 ; CHECK-NEXT:    add 1, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r5
+; CHECK-NEXT:    sub! r4, r3, r0
 ; CHECK-NEXT:    jump.lt @.BB4_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret
@@ -178,7 +178,7 @@ define void @loop6(i256 addrspace(1)* %dest, i256 addrspace(3)* %src, i256 %size
 ; CHECK-NEXT:    ld.inc r2, r5, r2
 ; CHECK-NEXT:    st.1.inc r1, r5, r1
 ; CHECK-NEXT:    add 1, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r5
+; CHECK-NEXT:    sub! r4, r3, r0
 ; CHECK-NEXT:    jump.lt @.BB5_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret

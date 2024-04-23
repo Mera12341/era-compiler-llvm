@@ -66,7 +66,7 @@ define fastcc void @expand-unknown-instrs(i256 addrspace(1)* %dest, i256 addrspa
 ; CHECK-INSTRS:       ld.1.inc r6, r8, r6
 ; CHECK-INSTRS-NEXT:  st.1.inc r7, r8, r7
 ; CHECK-INSTRS-NEXT:  add 1, r5, r5
-; CHECK-INSTRS-NEXT:  sub! r5, r3, r8
+; CHECK-INSTRS-NEXT:  sub! r5, r3, r0
 ; CHECK-INSTRS-NEXT:  jump.lt @.BB2_2
   call void @llvm.memcpy.p1i256.p1i256.i256(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size, i1 false)
   ret void

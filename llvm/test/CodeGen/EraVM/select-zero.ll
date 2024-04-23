@@ -4,7 +4,7 @@ target triple = "eravm"
 
 ; CHECK-LABEL: @select_zero_1
 define i256 @select_zero_1(i256 %0, i256 %1) {
-; CHECK:       sub!   r1, r2, r3
+; CHECK:       sub!   r1, r2, r0
 ; CHECK-NEXT:  add    r1, r2, r1
 ; CHECK-NEXT:  add.eq 1,  r1, r1
 entry:
@@ -17,7 +17,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_2
 define i256 @select_zero_2(i256 %0, i256 %1) {
-; CHECK:       sub!   r1, r2, r3
+; CHECK:       sub!   r1, r2, r0
 ; CHECK-NEXT:  add    r1, r2, r1
 ; CHECK-NEXT:  add.ne 1,  r1, r1
 entry:
@@ -31,7 +31,7 @@ entry:
 ; CHECK-LABEL: @select_zero_3
 define i256 @select_zero_3(i256 %0, i256 %1) {
 ; CHECK:       add    r1, r2, r3
-; CHECK-NEXT:  sub!   r1, r2, r1
+; CHECK-NEXT:  sub!   r1, r2, r0
 ; CHECK-NEXT:  add.eq 1,  r3, r3
 ; CHECK-NEXT:  add    r3, r0, r1
 entry:
@@ -45,7 +45,7 @@ entry:
 ; CHECK-LABEL: @select_zero_4
 define i256 @select_zero_4(i256 %0, i256 %1) {
 ; CHECK:       add    r1, r2, r3
-; CHECK-NEXT:  sub!   r1, r2, r1
+; CHECK-NEXT:  sub!   r1, r2, r0
 ; CHECK-NEXT:  add.ne 1,  r3, r3
 ; CHECK-NEXT:  add    r3, r0, r1
 entry:
@@ -58,10 +58,10 @@ entry:
 
 ; CHECK-LABEL: @select_zero_5
 define i256 @select_zero_5(i256 %0, i256 %1, i256 %2, i256 %3) {
-; CHECK:       sub!   r3, r4, r3
+; CHECK:       sub!   r3, r4, r0
 ; CHECK-NEXT:  add    0,  r0, r3
 ; CHECK-NEXT:  add.ne 1,  r0, r3
-; CHECK-NEXT:  sub!   r1, r2, r1
+; CHECK-NEXT:  sub!   r1, r2, r0
 ; CHECK-NEXT:  add.ne 1,  r3, r3
 ; CHECK-NEXT:  add    r3, r0, r1
 entry:
@@ -75,7 +75,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_or_1
 define i256 @select_zero_or_1(i256 %0, i256 %1, i256 %2) {
-; CHECK:       sub!   r1, r2, r1
+; CHECK:       sub!   r1, r2, r0
 ; CHECK-NEXT:  or.ne  1,  r3, r3
 ; CHECK-NEXT:  add    r3, r0, r1
 entry:
@@ -87,7 +87,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_or_2
 define i256 @select_zero_or_2(i256 %0, i256 %1, i256 %2) {
-; CHECK:       sub!   r1, r2, r1
+; CHECK:       sub!   r1, r2, r0
 ; CHECK-NEXT:  or.ne  1,  r3, r3
 ; CHECK-NEXT:  add    r3, r0, r1
 entry:
@@ -99,7 +99,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_sub
 define i256 @select_zero_sub(i256 %0, i256 %1, i256 %2) {
-; CHECK:       sub!      r1, r2, r1
+; CHECK:       sub!      r1, r2, r0
 ; CHECK-NEXT:  sub.s.ne  1,  r3, r3
 ; CHECK-NEXT:  add       r3, r0, r1
 entry:
@@ -111,7 +111,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_sub_not
 define i256 @select_zero_sub_not(i256 %0, i256 %1, i256 %2) {
-; CHECK:       sub!      r1, r2, r1
+; CHECK:       sub!      r1, r2, r0
 ; CHECK-NEXT:  add       0,  r0, r1
 ; CHECK-NEXT:  add.ne    1,  r0, r1
 ; CHECK-NEXT:  sub       r1, r3, r1
@@ -124,7 +124,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_shl
 define i256 @select_zero_shl(i256 %0, i256 %1, i256 %2) {
-; CHECK:       sub!      r1, r2, r1
+; CHECK:       sub!      r1, r2, r0
 ; CHECK-NEXT:  shl.s.ne  1,  r3, r3
 ; CHECK-NEXT:  add       r3, r0, r1
 entry:
@@ -136,7 +136,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_shl_not
 define i256 @select_zero_shl_not(i256 %0, i256 %1, i256 %2) {
-; CHECK:       sub!      r1, r2, r1
+; CHECK:       sub!      r1, r2, r0
 ; CHECK-NEXT:  add       0,  r0, r1
 ; CHECK-NEXT:  add.ne    1,  r0, r1
 ; CHECK-NEXT:  shl       r1, r3, r1
@@ -149,7 +149,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_shr
 define i256 @select_zero_shr(i256 %0, i256 %1, i256 %2) {
-; CHECK:       sub!      r1, r2, r1
+; CHECK:       sub!      r1, r2, r0
 ; CHECK-NEXT:  shr.s.ne  1,  r3, r3
 ; CHECK-NEXT:  add       r3, r0, r1
 entry:
@@ -161,7 +161,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_shr_not
 define i256 @select_zero_shr_not(i256 %0, i256 %1, i256 %2) {
-; CHECK:       sub!      r1, r2, r1
+; CHECK:       sub!      r1, r2, r0
 ; CHECK-NEXT:  add       0,  r0, r1
 ; CHECK-NEXT:  add.ne    1,  r0, r1
 ; CHECK-NEXT:  shr       r1, r3, r1
@@ -175,7 +175,7 @@ entry:
 ; CHECK-LABEL: @select_zero_add_stack
 define i256 @select_zero_add_stack(i256 %0, i256 %1) {
 ; CHECK:       nop    stack+=[1 + r0]
-; CHECK-NEXT:  sub!   r1, r2, r1
+; CHECK-NEXT:  sub!   r1, r2, r0
 ; CHECK-NEXT:  add.eq stack-[1],  r2, r2
 ; CHECK-NEXT:  add    r2, r0, r1
 entry:
@@ -190,7 +190,7 @@ entry:
 @val = addrspace(4) global i256 42
 ; CHECK-LABEL: @select_zero_add_code
 define i256 @select_zero_add_code(i256 %0, i256 %1) {
-; CHECK:       sub!   r1, r2, r1
+; CHECK:       sub!   r1, r2, r0
 ; CHECK-NEXT:  add.eq  @val[0], r2, r2
 ; CHECK-NEXT:  add    r2, r0, r1
 entry:
@@ -205,7 +205,7 @@ entry:
 define i256 @select_zero_not_folded_1(i256 %0, i256 %1) {
 ; CHECK:       nop    stack+=[1 + r0]
 ; CHECK-NEXT:  add    r1, r2, r3
-; CHECK-NEXT:  sub!   r1, r2, r1
+; CHECK-NEXT:  sub!   r1, r2, r0
 ; CHECK-NEXT:  add    0,  r0, r1
 ; CHECK-NEXT:  add.eq 1,  r0, r1
 ; CHECK-NEXT:  add    r1, r0, stack-[1]
