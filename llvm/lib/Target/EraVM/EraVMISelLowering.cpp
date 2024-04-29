@@ -1061,21 +1061,21 @@ SDValue EraVMTargetLowering::LowerSELECT(SDValue Op,
   auto Opc = MatchedUArithO.getOpcode();
   auto LoweredOpc = OpcodeMap.at(Opc);
   SDLoc DL(Op);
-  SDVTList FoldedVT = DAG.getVTList(MVT::i256, MVT::Other, MVT::Glue);
+  SDVTList FoldedVT = DAG.getVTList(MVT::i256, MVT::Glue);
   int OFGlueResult = 2;
   // MUL has 2 results
   if (LoweredOpc == EraVMISD::MUL_V) {
-    FoldedVT = DAG.getVTList(MVT::i256, MVT::i256, MVT::Other, MVT::Glue);
+    FoldedVT = DAG.getVTList(MVT::i256, MVT::i256, MVT::Glue);
     OFGlueResult = 3;
   }
   FoldedArith = DAG.getNode(LoweredOpc, DL, FoldedVT,
-                            {DAG.getEntryNode(), MatchedUArithO.getOperand(0),
+                            {MatchedUArithO.getOperand(0),
                              MatchedUArithO.getOperand(1)});
   //DAG.ReplaceAllUsesOfValueWith(MatchedUArithO.getValue(0),
   //                              FoldedArith.getValue(0));
-  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+  SDVTList VTs = DAG.getVTList(Op.getValueType());
   SDValue CC = DAG.getConstant(EraVMCC::COND_OF, DL, MVT::i256);
-  SDValue Ops[] = {TrueV, FalseV, CC, FoldedArith.getValue(OFGlueResult)};
+  SDValue Ops[] = {TrueV, FalseV, CC, FoldedArith.getValue(OFGlueResult-1)};
   return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
 }
 

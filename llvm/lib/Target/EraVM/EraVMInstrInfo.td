@@ -97,9 +97,9 @@ def EraVMlog_decommit : SDNode<"EraVMISD::LOG_DECOMMIT", SDT_EraVMLogDecommit, [
 def EraVMTrap : SDNode<"EraVMISD::TRAP", SDTNone,
     [SDNPHasChain, SDNPOptInGlue]>;
 
-def EraVMAdd_v : SDNode<"EraVMISD::ADD_V", SDT_EraVMArith, [SDNPHasChain]>;
-def EraVMSub_v : SDNode<"EraVMISD::SUB_V", SDT_EraVMArith, [SDNPHasChain]>;
-def EraVMMul_v : SDNode<"EraVMISD::MUL_V", SDT_EraVMArith, [SDNPHasChain]>;
+def EraVMAdd_v : SDNode<"EraVMISD::ADD_V", SDT_EraVMArith, [ SDNPOutGlue]>;
+def EraVMSub_v : SDNode<"EraVMISD::SUB_V", SDT_EraVMArith, [ SDNPOutGlue]>;
+def EraVMMul_v : SDNode<"EraVMISD::MUL_V", SDT_EraVMArith, [ SDNPOutGlue]>;
 
 //===----------------------------------------------------------------------===//
 // EraVM Operand Definitions.
