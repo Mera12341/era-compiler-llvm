@@ -141,6 +141,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
           ISD::ANY_EXTEND,
           ISD::GlobalAddress,
           ISD::BR_CC,
+          ISD::SELECT,
           ISD::SELECT_CC,
           ISD::BSWAP,
           ISD::CTPOP,
@@ -683,6 +684,7 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
   case ISD::BR_JT:              return LowerBR_JT(Op, DAG);
+  case ISD::SELECT:             return LowerSELECT(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
@@ -992,6 +994,20 @@ SDValue EraVMTargetLowering::LowerBlockAddress(SDValue Op,
   return DAG.getNode(EraVMISD::GACode, dl, PtrVT, Result);
 }
 
+static const std::unordered_map<uint64_t, uint64_t> OpcodeMap = {
+    {ISD::UADDO, EraVMISD::ADD_V},
+    {ISD::USUBO, EraVMISD::SUB_V},
+    {ISD::UMULO, EraVMISD::MUL_V},
+};
+
+static SDValue matchingOverflowArithmeticOperation(SDValue Op) {
+  // match of Op is the 2nd result of u{add|sub|mul}.with.overflow
+  if (Op.getResNo() == 1)
+    if (OpcodeMap.count(Op.getOpcode()))
+      return Op.getValue(0);
+  return SDValue();
+}
+
 SDValue EraVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
@@ -1028,6 +1044,39 @@ SDValue EraVMTargetLowering::LowerBR_JT(SDValue Op, SelectionDAG &DAG) const {
   std::array Ops = {Index, TargetJT, CC, Chain};
   SDNode *Res = DAG.getMachineNode(EraVM::J_jt, DL, MVT::Other, Ops);
   return SDValue(Res, 0);
+}
+
+SDValue EraVMTargetLowering::LowerSELECT(SDValue Op,
+                                             SelectionDAG &DAG) const {
+  // try to fold select with u{add|sub|mul}.with.overflow
+  SDValue Cond = Op.getOperand(0);
+  SDValue TrueV = Op.getOperand(1);
+  SDValue FalseV = Op.getOperand(2);
+
+  SDValue MatchedUArithO = matchingOverflowArithmeticOperation(Cond);
+  if (!MatchedUArithO)
+    return SDValue();
+
+  SDValue FoldedArith;
+  auto Opc = MatchedUArithO.getOpcode();
+  auto LoweredOpc = OpcodeMap.at(Opc);
+  SDLoc DL(Op);
+  SDVTList FoldedVT = DAG.getVTList(MVT::i256, MVT::Other, MVT::Glue);
+  int OFGlueResult = 2;
+  // MUL has 2 results
+  if (LoweredOpc == EraVMISD::MUL_V) {
+    FoldedVT = DAG.getVTList(MVT::i256, MVT::i256, MVT::Other, MVT::Glue);
+    OFGlueResult = 3;
+  }
+  FoldedArith = DAG.getNode(LoweredOpc, DL, FoldedVT,
+                            {DAG.getEntryNode(), MatchedUArithO.getOperand(0),
+                             MatchedUArithO.getOperand(1)});
+  //DAG.ReplaceAllUsesOfValueWith(MatchedUArithO.getValue(0),
+  //                              FoldedArith.getValue(0));
+  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+  SDValue CC = DAG.getConstant(EraVMCC::COND_OF, DL, MVT::i256);
+  SDValue Ops[] = {TrueV, FalseV, CC, FoldedArith.getValue(OFGlueResult)};
+  return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
 }
 
 SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
