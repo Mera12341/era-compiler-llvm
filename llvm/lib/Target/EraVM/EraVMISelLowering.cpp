@@ -1333,10 +1333,24 @@ bool EraVMTargetLowering::areJTsAllowed(const Function *Fn) const {
 
 void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
                                                         SDNode *Node) const {
-  assert(MI.hasPostISelHook() && "Expected instruction to have post-isel hook");
-
-  // Set NoMerge to gasleft instructions. This has to be in sync with nomerge
-  // attribute in IntrinsicsEraVM.td for this intrinsic.
-  if (MI.getOpcode() == EraVM::CTXGasLeft)
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("Unexpected instruction passed to post-isel hook");
+  case EraVM::JCl: {
+    const auto *CCOperand = EraVM::ccIterator(MI);
+    if (getImmOrCImm(*CCOperand) == EraVMCC::COND_NONE) {
+      // Instruction is not predicated - drop implicit use of Flags register.
+      int FlagsUseIdx = MI.findRegisterUseOperandIdx(EraVM::Flags);
+      assert(FlagsUseIdx < 0 && "Conservative Uses=[Flags] expected");
+      assert(MI.getOperand(FlagsUseIdx).isImplicit());
+      MI.removeOperand(FlagsUseIdx);
+    }
+    break;
+  }
+  case EraVM::CTXGasLeft:
+    // Set NoMerge to gasleft instructions. This has to be in sync with nomerge
+    // attribute in IntrinsicsEraVM.td for this intrinsic.
     MI.setFlag(MachineInstr::MIFlag::NoMerge);
+    break;
+  }
 }
