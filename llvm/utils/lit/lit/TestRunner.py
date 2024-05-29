@@ -2099,8 +2099,8 @@ def _runShTest(test, litConfig, useExternalSh, script, tmpBase):
 def executeShTest(
     test, litConfig, useExternalSh, extra_substitutions=[], preamble_commands=[]
 ):
-    if test.config.unsupported:
-        return lit.Test.Result(Test.UNSUPPORTED, "Test is unsupported")
+    # if test.config.unsupported:
+        # return lit.Test.Result(Test.UNSUPPORTED, "Test is unsupported")
 
     script = list(preamble_commands)
     parsed = parseIntegratedTestScript(test, require_script=not script)
