@@ -651,7 +651,7 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
         # Prevent further recursion if the timeout has been hit
         # as we should try avoid launching more processes.
         return None
-    print("(Flash) _executeShCmd cmd: ", cmd)
+#     print("(Flash) _executeShCmd cmd: ", cmd)
 
     if isinstance(cmd, ShUtil.Seq):
         if cmd.op == ";":
@@ -1072,12 +1072,12 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
     if isWin32CMDEXE:
         script += ".bat"
 
-    print("\n\n(Flash) executeScript commands (before): \n", str(commands))
+#     print("\n\n(Flash) executeScript commands (before): \n", str(commands))
     kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
     kOurMtriple = "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
     for i, ln in enumerate(commands):   
         commands[i] = re.sub(kMtripleRegex, kOurMtriple, commands[i])
-        print("\n\n(Flash) executeScript commands[i] (after): \n", i, str(commands[i]))
+#         print("\n\n(Flash) executeScript commands[i] (after): \n", i, str(commands[i]))
 
 
     # Write script file
@@ -1115,7 +1115,7 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
             f.write(bytes("{ " + "; } &&\n{ ".join(commands) + "; }", "utf-8"))
         else:
             f.write("{ " + "; } &&\n{ ".join(commands) + "; }")
-    print("\n\n(Flash) executeScript commands (after): \n", str(commands))
+#     print("\n\n(Flash) executeScript commands (after): \n", str(commands))
     f.write(b"\n" if mode == "wb" else "\n")
     f.close()
 
