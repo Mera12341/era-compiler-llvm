@@ -60,6 +60,7 @@ class EraVMAsmParser : public MCTargetAsmParser {
 
   bool parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
                              OperandVector &Operands);
+
   bool parseRegOperand(OperandVector &Operands);
   OperandMatchResultTy tryParseUImm16Operand(OperandVector &Operands);
   OperandMatchResultTy tryParseJumpTargetOperand(OperandVector &Operands);
@@ -328,6 +329,7 @@ static int parseExplicitCondition(StringRef Code) {
       .Case("ne", EraVMCC::COND_NE)
       .Case("ge", EraVMCC::COND_GE)
       .Case("le", EraVMCC::COND_LE)
+      .Case("gtlt", EraVMCC::COND_GTOrLT)
       .Default(EraVMCC::COND_INVALID);
 }
 
@@ -338,12 +340,12 @@ bool EraVMAsmParser::parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
 
   // Make sure no spaces are between the tokens.
   const char *ExpectedNextLocPtr = NameLoc.getPointer() + Name.size();
-  auto CheckNoSpaces = [&ExpectedNextLocPtr](const AsmToken &Tok) {
+  auto IsSeparatedBySpace = [&ExpectedNextLocPtr](const AsmToken &Tok) {
     if (ExpectedNextLocPtr != Tok.getLoc().getPointer())
-      return false;
+      return true;
 
     ExpectedNextLocPtr = Tok.getEndLoc().getPointer();
-    return true;
+    return false;
   };
 
   // From the lexer point of view, condition code can either be part of
@@ -370,7 +372,7 @@ bool EraVMAsmParser::parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
   Operands.push_back(EraVMOperand::CreateToken(Name, NameLoc));
 
   if (getTok().is(AsmToken::Exclaim)) {
-    if (!CheckNoSpaces(getTok()))
+    if (IsSeparatedBySpace(getTok()))
       return TokError("unexpected whitespace before '!'");
     if (CondCode != EraVMCC::COND_INVALID)
       return TokError("unexpected '!' after condition code");
@@ -382,7 +384,7 @@ bool EraVMAsmParser::parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
   if (getTok().is(AsmToken::Identifier) &&
       getTok().getString().startswith(".") &&
       TryParseCC(getTok().getString().drop_front(1))) {
-    if (!CheckNoSpaces(getTok()))
+    if (IsSeparatedBySpace(getTok()))
       return TokError("unexpected whitespace before condition code");
     Lex(); // eat ".<cond>" token
   }

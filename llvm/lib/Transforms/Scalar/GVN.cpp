@@ -487,6 +487,19 @@ uint32_t GVNPass::ValueTable::lookupOrAddCall(CallInst *C) {
     return nextValueNumber++;
   }
 
+  // EraVM local begin
+  // GVN doesn't know how to identify preventers for the following calls, so
+  // they are handled in EraVMCSE pass.
+  if (const auto *Callee = C->getCalledFunction()) {
+    if (Callee->getName() == "__system_request" ||
+        Callee->getName() == "__system_request_slice_fallback" ||
+        Callee->getName() == "__sha3") {
+      valueNumbering[C] = nextValueNumber;
+      return nextValueNumber++;
+    }
+  }
+  // EraVM local end
+
   if (AA->doesNotAccessMemory(C)) {
     Expression exp = createExpr(C);
     uint32_t e = assignExpNewValueNum(exp).first;
@@ -2720,7 +2733,7 @@ bool GVNPass::runImpl(Function &F, AssumptionCache &RunAC, DominatorTree &RunDT,
   bool Changed = false;
   bool ShouldContinue = true;
 
-  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Eager);
+  DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Lazy);
   // Merge unconditional branches, allowing PRE to catch more
   // optimization opportunities.
   for (BasicBlock &BB : llvm::make_early_inc_range(F)) {
@@ -2730,6 +2743,7 @@ bool GVNPass::runImpl(Function &F, AssumptionCache &RunAC, DominatorTree &RunDT,
 
     Changed |= removedBlock;
   }
+  DTU.flush();
 
   unsigned Iteration = 0;
   while (ShouldContinue) {

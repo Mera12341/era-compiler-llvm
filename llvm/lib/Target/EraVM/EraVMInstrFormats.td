@@ -216,13 +216,18 @@ def pred : PredicateOperand<i256, (ops i256imm), (ops (i256 0))> {
 class EraVMCondCode<int val> {
   int Encoding = val;
 }
-def COND_NONE : EraVMCondCode<0>;
-def COND_GT   : EraVMCondCode<1>;
-def COND_LT   : EraVMCondCode<2>;
-def COND_E    : EraVMCondCode<3>;
-def COND_GE   : EraVMCondCode<4>;
-def COND_LE   : EraVMCondCode<5>;
-def COND_NE   : EraVMCondCode<6>;
+def COND_NONE    : EraVMCondCode<0>;
+def COND_GT      : EraVMCondCode<1>;
+def COND_LT      : EraVMCondCode<2>;
+def COND_E       : EraVMCondCode<3>;
+def COND_GE      : EraVMCondCode<4>;
+def COND_LE      : EraVMCondCode<5>;
+def COND_NE      : EraVMCondCode<6>;
+def COND_GTOrLT  : EraVMCondCode<7>;
+// This is a pseudo flag, alias of LT and used to distinguish between
+// normal LT set by sub instruction which is reversible and LT set to
+// indicate overflow caused by add/mul which are not reversible.
+def COND_OF   : EraVMCondCode<8>;
 def COND_INVALID : EraVMCondCode<-1>;
 
 def CondCodes : GenericEnum {
@@ -328,23 +333,6 @@ class ILogRrr_r<EraVMOpcode opcode, dag outs, dag ins,
   let Src0 = rs0;
   let Src1 = rs1;
   let Dst0 = rd0;
-}
-
-class ILogRFirstrr_<EraVMOpcode opcode, bit is_first,
-                    dag outs, dag ins,
-                    string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, asmstr, pattern> {
-  bits<4> rs0;
-  bits<4> rs1;
-
-  let Src0 = rs0;
-  let Src1 = rs1;
-
-  let AsmString = !strconcat(opcode.Name,
-                             !if(is_first, ".first", ""),
-                             "${cc}", "\t", asmstr);
-  let Opcode = LogROpcEncoder<opcode.Encoding, opcode.BaseOpcode,
-                              is_first>.Opcode;
 }
 
 class IBinary<EraVMOpcode opcode,
@@ -653,7 +641,6 @@ class Isr_sr<EraVMOpcode opcode,
 }
 
 class IRetBase<EraVMOpcode opcode,
-               bit to_label,
                dag ins,
                string asmstr,
                list<dag> pattern>
@@ -662,18 +649,13 @@ class IRetBase<EraVMOpcode opcode,
   let isReturn = 1;
   let isTerminator = 1;
   let isBarrier = 1;
-
-  let AsmString = !strconcat(opcode.Name,
-                             !if(to_label, ".to_label", ""),
-                             "${cc}", "\t", asmstr);
-  let Opcode = RetOpcEncoder<opcode.BaseOpcode, to_label>.Opcode;
 }
 
 class IRet<EraVMOpcode opcode,
            dag ins,
            string asmstr,
            list<dag> pattern>
-  : IRetBase <opcode, false, ins, asmstr, pattern > {
+  : IRetBase <opcode, ins, asmstr, pattern > {
   bits<4> rs0;
 
   let Src0 = rs0;
@@ -683,7 +665,7 @@ class IRetToLabel<EraVMOpcode opcode,
                   dag ins,
                   string asmstr,
                   list<dag> pattern>
-  : IRetBase <opcode, true, ins, asmstr, pattern > {
+  : IRetBase <opcode, ins, asmstr, pattern > {
   bits<4> rs0;
   bits<16> dest;
 
@@ -715,7 +697,7 @@ class IFarCall<EraVMOpcode opcode,
       !cond(!eq({is_static, is_shard}, {0, 0}): "",
             !eq({is_static, is_shard}, {1, 0}): ".static",
             !eq({is_static, is_shard}, {0, 1}): ".shard",
-            !eq({is_static, is_shard}, {1, 1}): ".static.shard",
+            !eq({is_static, is_shard}, {1, 1}): ".st.sh",
             true: ".INVALID");
   let AsmString = !strconcat(opcode.Name, Modifiers, "${cc}", "\t", asmstr);
   let Opcode = FarCallOpcEncoder<opcode.BaseOpcode, is_shard, is_static>.Opcode;

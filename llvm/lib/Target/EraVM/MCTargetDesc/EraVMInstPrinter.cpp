@@ -86,6 +86,7 @@ void EraVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
     O << ".eq";
     break;
   case EraVMCC::COND_LT:
+  case EraVMCC::COND_OF:
     O << ".lt";
     break;
   case EraVMCC::COND_GT:
@@ -99,6 +100,9 @@ void EraVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
     break;
   case EraVMCC::COND_LE:
     O << ".le";
+    break;
+  case EraVMCC::COND_GTOrLT:
+    O << ".gtlt";
     break;
   case EraVMCC::COND_NONE:
     break;

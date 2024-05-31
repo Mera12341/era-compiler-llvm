@@ -40,6 +40,8 @@ def SDT_EraVMPtrToInt     : SDTypeProfile<1, 1, [SDTCisVT<0, i256>, SDTCisVT<1, 
 def SDT_EraVMPtrOp        : SDTypeProfile<1, 2, [SDTCisVT<0, fatptr>, SDTCisVT<1, fatptr>, SDTCisVT<2, i256>]>;
 def SDT_EraVMLogDecommit  : SDTypeProfile<1, 2, [SDTCisVT<0, fatptr>, SDTCisVT<1, i256>, SDTCisVT<2, i256>]>;
 
+def SDT_EraVMArith  : SDTypeProfile<1, 2, [SDTCisVT<0, i256>, SDTCisVT<1, i256>, SDTCisVT<2, i256>]>;
+
 //===----------------------------------------------------------------------===//
 // EraVM Specific Node Definitions.
 //===----------------------------------------------------------------------===//
@@ -95,6 +97,13 @@ def EraVMlog_decommit : SDNode<"EraVMISD::LOG_DECOMMIT", SDT_EraVMLogDecommit, [
 
 def EraVMTrap : SDNode<"EraVMISD::TRAP", SDTNone,
     [SDNPHasChain, SDNPOptInGlue]>;
+
+// Those instructions will set flag register and need SDNPOutGlue attribute.
+// The followed flag user will use the outputted GLUE to prevent the DAG scheduler
+// from scheduling another flag-setting instruction betweem them and their users.
+def EraVMAdd_v : SDNode<"EraVMISD::ADD_V", SDT_EraVMArith, [SDNPHasChain, SDNPOutGlue]>;
+def EraVMSub_v : SDNode<"EraVMISD::SUB_V", SDT_EraVMArith, [SDNPHasChain, SDNPOutGlue]>;
+def EraVMMul_v : SDNode<"EraVMISD::MUL_V", SDT_EraVMArith, [SDNPHasChain, SDNPOutGlue]>;
 
 //===----------------------------------------------------------------------===//
 // EraVM Operand Definitions.
@@ -224,7 +233,8 @@ def Address_generic       : AddressSpace<"AS_GENERIC",   3>;
 def Address_code          : AddressSpace<"AS_CODE",      4>;
 def Address_storage       : AddressSpace<"AS_STORAGE",   5>;
 def Address_transient     : AddressSpace<"AS_TRANSIENT", 6>;
-def Address_max_id        : AddressSpace<"MAX_ADDRESS",  Address_transient.Id>;
+def Address_static        : AddressSpace<"AS_STATIC",    7>;
+def Address_max_id        : AddressSpace<"MAX_ADDRESS",  Address_static.Id>;
 
 def AddressSpaces : GenericEnum {
   let FilterClass = "AddressSpace";
@@ -232,7 +242,7 @@ def AddressSpaces : GenericEnum {
   let ValueField = "Id";
 }
 
-foreach as_name = [ "stack", "heap", "heapaux", "generic", "code", "storage", "transient" ] in {
+foreach as_name = [ "stack", "heap", "heapaux", "generic", "code", "storage", "transient", "static" ] in {
   defvar as = !cast<AddressSpace>("Address_"#as_name);
 
   let AddressSpaces = [as.Id] in {
@@ -268,7 +278,9 @@ def FRAMEirrr : Pseudo<(outs GR256:$dst), (ins i256imm:$imm, GR256:$src, GR256:$
 let isSelect = 1, Uses = [Flags] in {
   def SELrrr : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
                        [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, GR256:$src2, imm:$cc))]>;
+                          (EraVMselectcc GR256:$src, GR256:$src2, imm:$cc))]> {
+                            let hasPostISelHook = 1;
+                          }
 
   def FATPTR_SELrrr : Pseudo<(outs GRPTR:$dst), (ins GRPTR:$src, GRPTR:$src2, i256imm:$cc),
                              [(set GRPTR:$dst,
@@ -292,7 +304,7 @@ let mayLoad = 1 in {
   def SELrir : Pseudo<(outs GR256:$dst), (ins GR256:$src, imm16:$src2, i256imm:$cc),
                        [(set GR256:$dst,
                           (EraVMselectcc GR256:$src, imm16:$src2, imm:$cc))]> {
-                            let Constraints = "$dst = $src";
+                            let hasPostISelHook = 1;
                           }
   def SELiir : Pseudo<(outs GR256:$dst), (ins imm16:$src, imm16:$src2, i256imm:$cc),
                        [(set GR256:$dst,
@@ -306,7 +318,9 @@ let mayLoad = 1 in {
                           (EraVMselectcc (load_stack stackaddr:$src), imm16:$src2, imm:$cc))]>;
   def SELrcr : Pseudo<(outs GR256:$dst), (ins GR256:$src, memop:$src2, i256imm:$cc),
                        [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc))]>;
+                          (EraVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc))]> {
+                            let hasPostISelHook = 1;
+                          }
   def SELicr : Pseudo<(outs GR256:$dst), (ins imm16:$src, memop:$src2, i256imm:$cc),
                        [(set GR256:$dst,
                           (EraVMselectcc imm16:$src, (load_code memaddr:$src2), imm:$cc))]>;
@@ -319,7 +333,7 @@ let mayLoad = 1 in {
   def SELrsr : Pseudo<(outs GR256:$dst), (ins GR256:$src, stackin:$src2, i256imm:$cc),
                        [(set GR256:$dst,
                           (EraVMselectcc GR256:$src, (load_stack stackaddr:$src2), imm:$cc))]> {
-                            let Constraints = "$dst = $src";
+                            let hasPostISelHook = 1;
                           }
   def SELisr : Pseudo<(outs GR256:$dst), (ins imm16:$src, stackin:$src2, i256imm:$cc),
                        [(set GR256:$dst,
@@ -382,12 +396,24 @@ let hasSideEffects = 1, Defs = [SP], Uses = [SP] in {
 def NOPrrr : Irr_r<OpNoOp, NoSwap, PreserveFlags,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                    "$rs0, $rs1, $rd0", []>;
+def NOPirr : Iir_r<OpNoOp, NoSwap, PreserveFlags,
+                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
+                   "$imm, $rs1, $rd0", []>;
+def NOPcrr : Imr_r<OpNoOp, NoSwap, PreserveFlags,
+                   (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
+                   "$src0, $rs1, $rd0", []>;
 def NOPsrr : Isr_r<OpNoOp, NoSwap, PreserveFlags,
                    (outs GR256:$rd0), (ins stackin:$src0, GR256:$rs1),
                    "$src0, $rs1, $rd0", []>;
 def NOPrrs : Irr_s<OpNoOp, NoSwap, PreserveFlags,
                    (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                    "$rs0, $rs1, $dst0", []>;
+def NOPirs : Iir_s<OpNoOp, NoSwap, PreserveFlags,
+                   (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
+                   "$imm, $rs1, $dst0", []>;
+def NOPcrs : Imr_s<OpNoOp, NoSwap, PreserveFlags,
+                   (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
+                   "$src0, $rs1, $dst0", []>;
 def NOPsrs : Isr_s<OpNoOp, NoSwap, PreserveFlags,
                    (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
                    "$src0, $rs1, $dst0", []>;
@@ -960,6 +986,9 @@ defm LD2 : HeapLoad<OpLoadAuxHeap, load_heapaux>;
 defm LD1Inc : HeapLoadInc<OpLoadHeapInc>;
 defm LD2Inc : HeapLoadInc<OpLoadAuxHeapInc>;
 
+defm LDst : HeapLoad<OpStaticRead, load_static>;
+defm LDstInc : HeapLoadInc<OpStaticReadInc>;
+
 let mayLoad = 1 in {
 def LD      : IUMAr_r<OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
                      "$rs0, $rd0", []>;
@@ -990,16 +1019,8 @@ defm ST2 : HeapStore<OpStoreAuxHeap, store_heapaux>;
 defm ST1Inc : HeapStoreInc<OpStoreHeapInc>;
 defm ST2Inc : HeapStoreInc<OpStoreAuxHeapInc>;
 
-def : MnemonicAlias<"uma.fat_ptr_read", "ld">;
-def : MnemonicAlias<"uma.fat_ptr_read.inc", "ld.inc">;
-def : MnemonicAlias<"uma.heap_read", "ld.1">;
-def : MnemonicAlias<"uma.aux_heap_read", "ld.2">;
-def : MnemonicAlias<"uma.inc.heap_read", "ld.1.inc">;
-def : MnemonicAlias<"uma.inc.aux_heap_read", "ld.2.inc">;
-def : MnemonicAlias<"uma.heap_write", "st.1">;
-def : MnemonicAlias<"uma.aux_heap_write", "st.2">;
-def : MnemonicAlias<"uma.inc.heap_write", "st.1.inc">;
-def : MnemonicAlias<"uma.inc.aux_heap_write", "st.2.inc">;
+defm STst : HeapStore<OpStaticWrite, store_static>;
+defm STstInc : HeapStoreInc<OpStaticWriteInc>;
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions
@@ -1078,14 +1099,16 @@ let isCall = 1 in
 def JCALL: Pseudo<(outs), (ins jmptarget:$dest), []>,
            PseudoInstExpansion<(JCl jmptarget:$dest, 0)>;
 
-multiclass RetLike<EraVMOpcode opcode> {
-  def r : IRet<opcode, (ins GR256:$rs0), "$rs0", []>;
-  def rl : IRetToLabel<opcode, (ins GR256:$rs0, jmptarget:$dest), "$rs0, $dest", []>;
-}
+def RETr : IRet<OpRet, (ins GR256:$rs0), "$rs0", []>;
+def RETrl : IRetToLabel<OpRetToLabel, (ins GR256:$rs0, jmptarget:$dest), "$rs0, $dest", []>;
 
-defm RET    : RetLike<OpRet>;
-defm REVERT : RetLike<OpRevert>;
-defm PANIC  : RetLike<OpPanic>;
+def REVERTr : IRet<OpRevert, (ins GR256:$rs0), "$rs0", []>;
+def REVERTrl : IRetToLabel<OpRevertToLabel, (ins GR256:$rs0, jmptarget:$dest), "$rs0, $dest", []>;
+
+let rs0 = 0 in {
+def PANIC  : IRet<OpPanic, (ins), "", []>;
+def PANICl : IRetToLabel<OpPanicToLabel, (ins jmptarget:$dest), "$dest", []>;
+}
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
 def RET  : Pseudo<(outs), (ins pred:$cc), [(EraVMret)]>,
@@ -1099,7 +1122,13 @@ def THROW : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMthrow GR256:$rs0)]
 
 def : InstAlias<"ret${cc}", (RETr R1, pred:$cc)>;
 def : InstAlias<"revert${cc}", (REVERTr R1, pred:$cc)>;
-def : InstAlias<"panic${cc}", (PANICr R0, pred:$cc)>;
+def : InstAlias<"panic${cc}", (PANIC pred:$cc)>;
+
+// TODO Make these aliases preferred for printing after switching to the new syntax.
+let EmitPriority = 0 in {
+def : InstAlias<"ret.ok.to_label${cc} $dest", (RETrl R1, jmptarget:$dest, pred:$cc)>;
+def : InstAlias<"ret.revert.to_label${cc} $dest", (REVERTrl R1, jmptarget:$dest, pred:$cc)>;
+}
 
 let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
 def RETURN : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMreturn GR256:$rs0)]>;
@@ -1171,7 +1200,6 @@ def SLDrr : ILogRr_r<OpSload, (outs GR256:$rd0), (ins GR256:$rs0),
 def TLDrr : ILogRr_r<OpTransientLoad, (outs GR256:$rd0), (ins GR256:$rs0),
                      "$rs0, $rd0",
                      [(set GR256:$rd0, (load_transient GR256:$rs0))]>;
-def : MnemonicAlias<"log.sread", "sload">;
 
 let hasSideEffects = 1 in {
   def SSTr : ILogRrr_<OpSstore, (outs), (ins GR256:$rs0, GR256:$rs1),
@@ -1181,21 +1209,20 @@ let hasSideEffects = 1 in {
                       "$rs0, $rs1",
                       [(store_transient GR256:$rs1, GR256:$rs0)]>;
 }
-def : MnemonicAlias<"log.swrite", "sstore">;
 
 let hasSideEffects = 1 in {
-def L1r : ILogRFirstrr_<OpLogToL1, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
+def L1r : ILogRrr_<OpLogToL1, (outs), (ins GR256:$rs0, GR256:$rs1),
                         "$rs0, $rs1",
                         [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 0)]>;
-def L1Firstr : ILogRFirstrr_<OpLogToL1, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
+def L1Firstr : ILogRrr_<OpLogToL1First, (outs), (ins GR256:$rs0, GR256:$rs1),
                              "$rs0, $rs1",
                              [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 1)]>;
 
-def EVTr : ILogRFirstrr_<OpLogEvent, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
+def EVTr : ILogRrr_<OpLogEvent, (outs), (ins GR256:$rs0, GR256:$rs1),
                          "$rs0, $rs1",
                          [(int_eravm_event GR256:$rs0, GR256:$rs1, 0)]>;
 
-def EVTFirstr : ILogRFirstrr_<OpLogEvent, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
+def EVTFirstr : ILogRrr_<OpLogEventFirst, (outs), (ins GR256:$rs0, GR256:$rs1),
                               "$rs0, $rs1",
                               [(int_eravm_event GR256:$rs0, GR256:$rs1, 1)]>;
 
@@ -1237,6 +1264,14 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
   defm MIMIC_CALL    : FarCallInst<OpMimic>;
 }
 
+// Static and shard modifiers are technically part of far call's mnemonic,
+// so using `MnemonicAlias`es to accept them in both orders.
+// Note: using foreach, otherwise typos would be very hard to spot.
+foreach Op = [OpFarcall, OpDelegate, OpMimic] in {
+  def : MnemonicAlias<!strconcat(Op.Name, ".sh.st"),
+                      !strconcat(Op.Name, ".st.sh")>;
+}
+
 def : InstAlias<"near_call${cc} ${callee}",
                 (NEAR_CALL_default_unwind R0, jmptarget:$callee, pred:$cc)>;
 
@@ -1244,9 +1279,6 @@ def : Pat<(EraVMfarcall bb:$unwind), (FAR_CALLrrl R1, R2, bb:$unwind)>;
 def : Pat<(EraVMstaticcall bb:$unwind), (FAR_CALL_STATICrrl R1, R2, bb:$unwind)>;
 def : Pat<(EraVMdelegatecall bb:$unwind), (DELEGATE_CALLrrl R1, R2, bb:$unwind)>;
 def : Pat<(EraVMmimiccall bb:$unwind), (MIMIC_CALLrrl R1, R2, bb:$unwind)>;
-
-def : MnemonicAlias<"delegatecall", "far_call.delegate">;
-def : MnemonicAlias<"mimiccall", "far_call.mimic">;
 
 def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
           (SUBxrs_s (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0, 0)>;
@@ -1264,7 +1296,115 @@ def : Pat<(i256 (EraVMGACode texternalsym:$dst)), (ADDcrr_s texternalsym:$dst, 0
 def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (ADDcrr_s tblockaddress:$dst, 0, R0, 0)>;
 
 // Exceptions
-def : Pat<(EraVMTrap), (PANICr R0)>;
+def : Pat<(EraVMTrap), (PANIC 0)>;
 
 def : Pat<(EraVMselectcc GRPTR:$rs0, GRPTR:$rs1, imm:$cc),
           (FATPTR_SELrrr GRPTR:$rs0, GRPTR:$rs1, imm:$cc)>;
+
+// ============================ Overflow ADDs =====================================
+// to register
+def : Pat<(EraVMAdd_v GR256:$rs0, GR256:$rs1),
+          (ADDrrr_v GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMAdd_v GR256:$rs0, imm16:$rs1),
+          (ADDirr_v imm16:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMAdd_v GR256:$rs0, large_imm:$rs1),
+          (ADDcrr_v (constant_pool imm:$rs1), 0, GR256:$rs0, 0)>;
+def : Pat<(EraVMAdd_v GR256:$rs0, (load_code memaddr:$rs1)),
+          (ADDcrr_v memop:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMAdd_v (load_code memaddr:$rs0), GR256:$rs1),
+          (ADDcrr_v memop:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMAdd_v GR256:$rs0, (load_stack stackaddr:$rs1)),
+          (ADDsrr_v stackin:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMAdd_v (load_stack stackaddr:$rs0), GR256:$rs1),
+          (ADDsrr_v stackin:$rs0, GR256:$rs1, 0)>;
+
+// to stack
+def : Pat<(store_stack (EraVMAdd_v GR256:$rs0, GR256:$rs1), stackaddr:$stack),
+          (ADDrrs_v GR256:$rs0, GR256:$rs1, stackaddr:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v GR256:$rs0, imm16:$rs1), stackaddr:$stack),
+          (ADDirs_v imm16:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v GR256:$rs0, large_imm:$rs1), stackaddr:$stack),
+          (ADDcrs_v (constant_pool imm:$rs1), 0, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v GR256:$rs0, (load_code memaddr:$rs1)), stackaddr:$stack),
+          (ADDcrs_v memop:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v (load_code memaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (ADDcrs_v memop:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v (load_stack stackaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (ADDsrs_v stackin:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v GR256:$rs0, (load_stack stackaddr:$rs1)), stackaddr:$stack),
+          (ADDsrs_v stackin:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+
+// ============================ Overflow SUBs =====================================
+// to register
+def : Pat<(EraVMSub_v GR256:$rs0, GR256:$rs1), (SUBrrr_v GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMSub_v imm16:$rs0, GR256:$rs1), (SUBirr_v imm16:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMSub_v large_imm:$rs0, GR256:$rs1),
+          (SUBcrr_v (constant_pool imm:$rs0), 0, GR256:$rs1, 0)>;
+def : Pat<(EraVMSub_v (load_code memaddr:$rs0), GR256:$rs1),
+          (SUBcrr_v memop:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMSub_v (load_stack stackaddr:$rs0), GR256:$rs1),
+          (SUBsrr_v stackin:$rs0, GR256:$rs1, 0)>;
+
+def : Pat<(EraVMSub_v GR256:$rs0, imm16:$rs1),
+          (SUBxrr_v imm16:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMSub_v GR256:$rs0, large_imm:$rs1),
+          (SUByrr_v (constant_pool imm:$rs1), 0, GR256:$rs0, 0)>;
+def : Pat<(EraVMSub_v GR256:$rs0, (load_code memaddr:$rs1)),
+          (SUByrr_v memop:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMSub_v GR256:$rs0, (load_stack stackaddr:$rs1)),
+          (SUBzrr_v stackin:$rs1, GR256:$rs0, 0)>;
+
+// to stack
+def : Pat<(store_stack (EraVMSub_v GR256:$rs0, GR256:$rs1), stackaddr:$stack),
+          (SUBrrs_v GR256:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+
+def : Pat<(store_stack (EraVMSub_v imm16:$rs0, GR256:$rs1), stackaddr:$stack),
+          (SUBirs_v imm16:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v large_imm:$rs0, GR256:$rs1), stackaddr:$stack),
+          (SUBcrs_v (constant_pool imm:$rs0), 0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v (load_code memaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (SUBcrs_v memop:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v (load_stack stackaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (SUBsrs_v stackin:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+
+def : Pat<(store_stack (EraVMSub_v GR256:$rs0, imm16:$rs1), stackaddr:$stack),
+          (SUBxrs_v imm16:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v GR256:$rs0, large_imm:$rs1), stackaddr:$stack),
+          (SUByrs_v (constant_pool imm:$rs1), 0, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v GR256:$rs0, (load_code memaddr:$rs1)), stackaddr:$stack),
+          (SUByrs_v memop:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v GR256:$rs0, (load_stack stackaddr:$rs1)), stackaddr:$stack),
+          (SUBzrs_v stackin:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+
+// ============================ Overflow MULs =====================================
+// to register
+def : Pat<(EraVMMul_v GR256:$rs0, GR256:$rs1),
+          (MULrrrr_v GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMMul_v GR256:$rs0, imm16:$rs1),
+          (MULirrr_v imm16:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMMul_v GR256:$rs0, large_imm:$rs1),
+          (MULcrrr_v (constant_pool imm:$rs1), 0, GR256:$rs0, 0)>;
+def : Pat<(EraVMMul_v (load_code memaddr:$rs0), GR256:$rs1),
+          (MULcrrr_v memaddr:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMMul_v GR256:$rs0, (load_code memaddr:$rs1)),
+          (MULcrrr_v memaddr:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMMul_v (load_stack stackaddr:$rs0), GR256:$rs1),
+          (MULsrrr_v stackaddr:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMMul_v GR256:$rs0, (load_stack stackaddr:$rs1)),
+          (MULsrrr_v stackaddr:$rs1, GR256:$rs0, 0)>;
+
+// to stack
+def : Pat<(store_stack (EraVMMul_v GR256:$rs0, GR256:$rs1), stackaddr:$stack),
+          (MULrrsr_v GR256:$rs0, GR256:$rs1, stackaddr:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v GR256:$rs0, imm16:$rs1), stackaddr:$stack),
+          (MULirsr_v imm16:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v GR256:$rs0, large_imm:$rs1), stackaddr:$stack),
+          (MULcrsr_v (constant_pool imm:$rs1), 0, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v GR256:$rs0, (load_code memaddr:$rs1)), stackaddr:$stack),
+          (MULcrsr_v memop:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v (load_code memaddr:$rs0) ,GR256:$rs1), stackaddr:$stack),
+          (MULcrsr_v memop:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v GR256:$rs0, (load_stack stackaddr:$rs1)), stackaddr:$stack),
+          (MULsrsr_v stackin:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v (load_stack stackaddr:$rs0) ,GR256:$rs1), stackaddr:$stack),
+          (MULsrsr_v stackin:$rs0, GR256:$rs1, stackin:$stack, 0)>;
