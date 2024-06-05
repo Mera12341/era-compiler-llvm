@@ -983,7 +983,15 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
     return exitCode
 
 
+kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
+kOurMtriple = "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
+
+
 def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
+    print("\n\n(Flash) executeScriptInternal commands (before): \n", str(commands))
+    for i, ln in enumerate(commands):   
+        commands[i] = re.sub(kMtripleRegex, kOurMtriple, commands[i])
+        print("\n\n(Flash) executeScriptInternal commands[i] (after): \n", i, str(commands[i]))
     cmds = []
     for i, ln in enumerate(commands):
         match = re.match(kPdbgRegex, ln)
@@ -1073,8 +1081,6 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
         script += ".bat"
 
 #     print("\n\n(Flash) executeScript commands (before): \n", str(commands))
-    kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
-    kOurMtriple = "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
     for i, ln in enumerate(commands):   
         commands[i] = re.sub(kMtripleRegex, kOurMtriple, commands[i])
 #         print("\n\n(Flash) executeScript commands[i] (after): \n", i, str(commands[i]))
