@@ -291,6 +291,60 @@ let isSelect = 1, Uses = [Flags] in {
                           (EraVMselectcc imm16:$src, GR256:$src2, imm:$cc))]> {
                             let Constraints = "$dst = $src2";
                           }
+let mayStore = 1 in {
+  def SELrrs : Pseudo<(outs stackout:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc GR256:$src, GR256:$src2, imm:$cc), stackaddr:$dst)]>;
+  def SELris : Pseudo<(outs stackout:$dst), (ins GR256:$src, imm16:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc GR256:$src, imm16:$src2, imm:$cc), stackaddr:$dst)]>;
+  def SELirs : Pseudo<(outs stackout:$dst), (ins imm16:$src, GR256:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc imm16:$src, GR256:$src2, imm:$cc), stackaddr:$dst)]>;
+  def SELiis : Pseudo<(outs stackout:$dst), (ins imm16:$src, imm16:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc imm16:$src, imm16:$src2, imm:$cc), stackaddr:$dst)]>;
+
+let mayLoad = 1 in {
+  def SELrcs : Pseudo<(outs stackout:$dst), (ins GR256:$src, memop:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc), stackaddr:$dst)]>;
+  def SELrss : Pseudo<(outs stackout:$dst), (ins GR256:$src, stackin:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc GR256:$src, (load_stack stackaddr:$src2), imm:$cc), stackaddr:$dst)]>;
+  def SELics : Pseudo<(outs stackout:$dst), (ins imm16:$src, memop:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc imm16:$src, (load_code memaddr:$src2), imm:$cc), stackaddr:$dst)]>;
+  def SELiss : Pseudo<(outs stackout:$dst), (ins imm16:$src, stackin:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc imm16:$src, (load_stack stackaddr:$src2), imm:$cc), stackaddr:$dst)]>;
+  def SELcrs : Pseudo<(outs stackout:$dst), (ins memop:$src, GR256:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc), stackaddr:$dst)]>;
+  def SELcis : Pseudo<(outs stackout:$dst), (ins memop:$src, imm16:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc (load_code memaddr:$src), imm16:$src2, imm:$cc), stackaddr:$dst)]>;
+  def SELccs : Pseudo<(outs stackout:$dst), (ins memop:$src, memop:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc (load_code memaddr:$src), (load_code memaddr:$src2), imm:$cc), stackaddr:$dst)]>;
+  def SELcss : Pseudo<(outs stackout:$dst), (ins memop:$src, stackin:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc (load_code memaddr:$src), (load_stack stackaddr:$src2), imm:$cc), stackaddr:$dst)]>;
+  def SELsrs : Pseudo<(outs stackout:$dst), (ins stackin:$src, GR256:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc (load_stack stackaddr:$src), GR256:$src2, imm:$cc), stackaddr:$dst)]>;
+  def SELsis : Pseudo<(outs stackout:$dst), (ins stackin:$src, imm16:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc (load_stack stackaddr:$src), imm16:$src2, imm:$cc), stackaddr:$dst)]>;
+  def SELscs : Pseudo<(outs stackout:$dst), (ins stackin:$src, memop:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc (load_stack stackaddr:$src), (load_code memaddr:$src2), imm:$cc), stackaddr:$dst)]>;
+  def SELsss : Pseudo<(outs stackout:$dst), (ins stackin:$src, stackin:$src2, i256imm:$cc),
+                       [(store_stack
+                          (EraVMselectcc (load_stack stackaddr:$src), (load_stack stackaddr:$src2), imm:$cc), stackaddr:$dst)]>;
+}
+}
+
 let mayLoad = 1 in {
   def SELcrr : Pseudo<(outs GR256:$dst), (ins memop:$src, GR256:$src2, i256imm:$cc),
                        [(set GR256:$dst,
