@@ -1059,6 +1059,7 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
 
         # Show the error conditions:
         if result.exitCode != 0:
+            print("(Flash) result.exitCode: ", result.exitCode)
             # On Windows, a negative exit code indicates a signal, and those are
             # easier to recognize or look up if we print them in hex.
             if litConfig.isWindows and (result.exitCode < 0 or result.exitCode > 255):
@@ -1066,7 +1067,7 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
             else:
                 codeStr = str(result.exitCode)
             out += "error: command failed with exit status: %s\n" % (codeStr,)
-            if result.exitCode < 0 or result.exitCode > 1:  # FIXME: Really want ICE_EXIT_CODE.  Also cache fd
+            if result.exitCode < 0 or result.exitCode > 2:  # 2 is FileCheck failure. FIXME: Really want ICE_EXIT_CODE.  Also cache fd, maybe not CWD
                 open(kAnomalyLogName, "a").write(
                     "Anomaly: Args %s\n, exitCode: %s\n" % (" ".join('"%s"' % s for s in result.command.args), result.exitCode)
                 )
