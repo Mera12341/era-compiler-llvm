@@ -14,6 +14,8 @@ import threading
 
 import io
 
+import datetime
+
 try:
     from StringIO import StringIO
 except ImportError:
@@ -984,14 +986,17 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
 
 
 kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
-kOurMtriple = "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
+kOurMtriple =  os.getenv('FORCE_TRIPLE')      #   "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
+print("\n\n(Flash) kOurMtriple: ", kOurMtriple)
+
 kAnomalyLogName = "Lit_Anomaly.log"
 
 
 def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
-    print("\n\n(Flash) executeScriptInternal commands (before): \n", str(commands))
-    for i, ln in enumerate(commands):   
-        commands[i] = re.sub(kMtripleRegex, kOurMtriple, commands[i])
+    if kOurMtriple:
+        print("\n\n(Flash) executeScriptInternal commands (before): \n", str(commands))
+        for i, ln in enumerate(commands):   
+            commands[i] = re.sub(kMtripleRegex, kOurMtriple, commands[i])
         print("\n\n(Flash) executeScriptInternal commands[i] (after): \n", i, str(commands[i]))
     cmds = []
     for i, ln in enumerate(commands):
@@ -1069,7 +1074,7 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
             out += "error: command failed with exit status: %s\n" % (codeStr,)
             if result.exitCode < 0 or result.exitCode > 2:  # 2 is FileCheck failure. FIXME: Really want ICE_EXIT_CODE.  Also cache fd, maybe not CWD
                 open(kAnomalyLogName, "a").write(
-                    "Anomaly: Args %s\n, exitCode: %s\n" % (" ".join('"%s"' % s for s in result.command.args), result.exitCode)
+                    "\n\n%s\nAnomaly: Args %s\n exitCode: %s\n" % (datetime.datetime.utcnow().isoformat(), " ".join('"%s"' % s for s in result.command.args), result.exitCode)
                 )
         if litConfig.maxIndividualTestTime > 0 and result.timeoutReached:
             out += "error: command reached timeout: %s\n" % (
@@ -1087,9 +1092,10 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
         script += ".bat"
 
 #     print("\n\n(Flash) executeScript commands (before): \n", str(commands))
-    for i, ln in enumerate(commands):   
-        commands[i] = re.sub(kMtripleRegex, kOurMtriple, commands[i])
-#         print("\n\n(Flash) executeScript commands[i] (after): \n", i, str(commands[i]))
+    if kOurMtriple:
+        for i, ln in enumerate(commands):   
+            commands[i] = re.sub(kMtripleRegex, kOurMtriple, commands[i])
+    #         print("\n\n(Flash) executeScript commands[i] (after): \n", i, str(commands[i]))
 
 
     # Write script file
