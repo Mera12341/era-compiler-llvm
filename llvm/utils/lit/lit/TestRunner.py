@@ -985,6 +985,7 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
 
 kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
 kOurMtriple = "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
+kAnomalyLogName = "Lit_Anomaly.log"
 
 
 def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
@@ -1065,6 +1066,10 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
             else:
                 codeStr = str(result.exitCode)
             out += "error: command failed with exit status: %s\n" % (codeStr,)
+            if result.exitCode < 0 or result.exitCode > 1:  # FIXME: Really want ICE_EXIT_CODE.  Also cache fd
+                open(kAnomalyLogName, "a").write(
+                    "Anomaly: Args %s\n, exitCode: %s\n" % (" ".join('"%s"' % s for s in result.command.args), result.exitCode)
+                )
         if litConfig.maxIndividualTestTime > 0 and result.timeoutReached:
             out += "error: command reached timeout: %s\n" % (
                 str(result.timeoutReached),
