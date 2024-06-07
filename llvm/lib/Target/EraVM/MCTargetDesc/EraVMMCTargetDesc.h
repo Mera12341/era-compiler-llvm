@@ -125,6 +125,7 @@ constexpr unsigned CellBitWidth = 256;
 ///     and dummy integer immediate for absolute addressing
 ///   * a few special cases exist - see appendMCOperands function.
 enum MemOperandKind {
+  OperandInvalid,
   OperandCode,
   OperandStackAbsolute,
   OperandStackSPRelative,
@@ -139,11 +140,14 @@ void analyzeMCOperandsStack(const MCInst &MI, unsigned Idx, bool IsSrc,
                             unsigned &Reg, MemOperandKind &Kind,
                             const MCSymbol *&Symbol, int &Addend);
 
+// Returns the same Kind as analyzeMCOperandsStack returns, without other info.
+MemOperandKind getStackOperandKind(const MCInst &MI, unsigned Idx, bool IsSrc);
+
 void appendMCOperands(MCContext &Ctx, MCInst &MI, MemOperandKind Kind,
                       unsigned Reg, const MCSymbol *Symbol, int Addend);
 
 // encode_src_mode / encode_dst_mode
-enum OperandModes {
+enum EncodedOperandMode {
   ModeNotApplicable = -1, // no such operand
   ModeReg = 0,            // SrcReg, DstReg
   ModeSpMod = 1,          // SrcSpRelativePop, DstSpRelativePush
@@ -155,11 +159,29 @@ enum OperandModes {
   NumSrcModes = 6,
 };
 
+static inline EncodedOperandMode
+getModeEncodingForOperandKind(MemOperandKind Kind) {
+  switch (Kind) {
+  case OperandInvalid:
+    return ModeNotApplicable;
+  case OperandCode:
+    return ModeCode;
+  case OperandStackAbsolute:
+    return ModeStackAbs;
+  case OperandStackSPRelative:
+    return ModeSpRel;
+  case OperandStackSPDecrement:
+  case OperandStackSPIncrement:
+    return ModeSpMod;
+  }
+}
+
 const uint64_t EncodedOpcodeMask = UINT64_C(0x7ff);
 
 const EraVMOpcodeInfo *findOpcodeInfo(unsigned Opcode);
 const EraVMOpcodeInfo *analyzeEncodedOpcode(unsigned EncodedOpcode,
-                                            int &SrcMode, int &DstMode);
+                                            EncodedOperandMode &SrcMode,
+                                            EncodedOperandMode &DstMode);
 
 } // namespace EraVM
 } // namespace llvm

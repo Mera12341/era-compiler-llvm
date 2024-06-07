@@ -91,23 +91,17 @@ private:
                             SmallVectorImpl<MCFixup> &Fixups) const;
 };
 
-static int modeEncodingByMarker(const MCOperand &Op) {
-  assert((Op.isImm() || Op.isReg()) && "Unexpected marker operand");
-
-  if (Op.isImm())
-    return EraVM::ModeStackAbs;
-
-  unsigned MarkerReg = Op.getReg();
-  assert(MarkerReg == EraVM::R0 || MarkerReg == EraVM::SP);
-  return (MarkerReg == EraVM::SP) ? EraVM::ModeSpRel : EraVM::ModeSpMod;
+static int getStackModeEncoding(const MCInst &MI, unsigned Idx, bool IsSrc) {
+  EraVM::MemOperandKind Kind = EraVM::getStackOperandKind(MI, Idx, IsSrc);
+  return EraVM::getModeEncodingForOperandKind(Kind);
 }
 
 uint64_t EraVMMCCodeEmitter::adjustForStackOperands(
     const MCInst &MI, uint64_t EncodedInstr, const MCSubtargetInfo &STI) const {
   const MCInstrDesc &Desc = MCII.get(MI.getOpcode());
 
-  int OldSrcMode = -1;
-  int OldDstMode = -1;
+  EraVM::EncodedOperandMode OldSrcMode = EraVM::ModeNotApplicable;
+  EraVM::EncodedOperandMode OldDstMode = EraVM::ModeNotApplicable;
   // To not reason about possible signed-to-unsigned widening in the code below,
   // let's just use int type for EncodedOpcode as it essentially holds an
   // 11-bit value anyway.
@@ -117,16 +111,14 @@ uint64_t EraVMMCCodeEmitter::adjustForStackOperands(
   assert(Info && "Incorrect EncodedOpcode produced by the encoder");
 
   if (OldSrcMode == EraVM::ModeStackAbs) {
-    const MCOperand &Op =
-        MI.getOperand(Info->getMCOperandIndexOfStackSrc(Desc));
-    int NewSrcMode = modeEncodingByMarker(Op);
-    EncodedOpcode += (NewSrcMode - OldSrcMode) * (int)Info->SrcMultiplier;
+    unsigned SrcIdx = Info->getMCOperandIndexOfStackSrc(Desc);
+    int NewSrcMode = getStackModeEncoding(MI, SrcIdx, /*IsSrc=*/true);
+    EncodedOpcode += (NewSrcMode - (int)OldSrcMode) * (int)Info->SrcMultiplier;
   }
   if (OldDstMode == EraVM::ModeStackAbs) {
-    const MCOperand &Op =
-        MI.getOperand(Info->getMCOperandIndexOfStackDst(Desc));
-    int NewDstMode = modeEncodingByMarker(Op);
-    EncodedOpcode += (NewDstMode - OldDstMode) * (int)Info->DstMultiplier;
+    unsigned DstIdx = Info->getMCOperandIndexOfStackDst(Desc);
+    int NewDstMode = getStackModeEncoding(MI, DstIdx, /*IsSrc=*/false);
+    EncodedOpcode += (NewDstMode - (int)OldDstMode) * (int)Info->DstMultiplier;
   }
 
   EncodedInstr &= ~EraVM::EncodedOpcodeMask;
@@ -189,7 +181,7 @@ uint64_t EraVMMCCodeEmitter::getStackOpValue(const MCInst &MI, unsigned Idx,
   unsigned BaseReg = 0;
   const MCSymbol *Symbol = nullptr;
   int Addend = 0;
-  EraVM::MemOperandKind Kind = EraVM::OperandStackAbsolute;
+  EraVM::MemOperandKind Kind = EraVM::OperandInvalid;
   EraVM::analyzeMCOperandsStack(MI, Idx, IsSrc, BaseReg, Kind, Symbol, Addend);
 
   return getRegWithAddend(MI, BaseReg, Symbol, Addend, IsSrc, Fixups);

@@ -39,6 +39,7 @@ jobs:
         with:
           ref: ${{ steps.extract_branch.outputs.head_ref }}
           fetch-depth: ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Prepare commits
         id: prepare
@@ -65,6 +66,11 @@ jobs:
         with:
           ref: ${{ matrix.commit }}
           fetch-depth: ${{ needs.prepare-test-matrix.outputs.fetch_depth }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Define previous commit
+        id: previous-commit
+        run: echo "sha=$(git show --quiet --pretty='%H' ${{ matrix.commit }}^1)" | tee -a "${GITHUB_OUTPUT}"
 
       - name: Get changed files
         id: changed-files
@@ -72,7 +78,7 @@ jobs:
         with:
           separator: ","
           sha: ${{ matrix.commit }}
-          base_sha: ${{ github.event.pull_request.base.sha }}
+          base_sha: ${{ steps.previous-commit.outputs.sha }}
 
       - name: Install formatting requirements
         run: python3 -m pip install -r ./llvm/utils/git/requirements_formatting_era_llvm.txt
@@ -80,10 +86,14 @@ jobs:
       - name: Run code formatter
         run: |
           set -x
-          python3 ./llvm/utils/git/code-format-helper-era-llvm.py \
-            --token ${{ secrets.GITHUB_TOKEN }} \
+          if [ '${{ github.event.pull_request.head.repo.fork }}' = 'true' ]; then
+            TOKEN_PARAM=""
+          else
+            TOKEN_PARAM="--token ${{ secrets.GITHUB_TOKEN }}"
+          fi
+          python3 ./llvm/utils/git/code-format-helper-era-llvm.py ${TOKEN_PARAM} \
             --issue-number ${{ github.event.pull_request.number }} \
-            --start-rev ${{ github.event.pull_request.base.sha }} \
+            --start-rev ${{ steps.previous-commit.outputs.sha }} \
             --end-rev ${{ matrix.commit }} \
             --changed-files ${{ steps.changed-files.outputs.all_changed_files }}
 
@@ -102,13 +112,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.commit }}
+          fetch-depth: ${{ needs.prepare-test-matrix.outputs.fetch_depth }}
           path: "llvm"
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
-      # Ccache will be updated each month
-      # Older caches will be deprecated automatically after 7 days of inactivity
-      - name: Define ccache key
-        id: ccache-key
-        run: echo "key=llvm-${{ github.event.repository.default_branch }}-$(date +'%Y-%m')" | tee -a "${GITHUB_OUTPUT}"
+      - name: Define previous commit
+        if: github.event_name == 'pull_request'
+        working-directory: llvm
+        id: previous-commit
+        run: echo "sha=$(git show --quiet --pretty='%H' ${{ matrix.commit }}^1)" | tee -a "${GITHUB_OUTPUT}"
 
       - name: Build LLVM
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
@@ -117,8 +129,7 @@ jobs:
           enable-tests: true
           enable-assertions: true
           clone-llvm: false
-          ccache-key: ${{ steps.ccache-key.outputs.key }}
-
+          ccache-key-type: 'static' # rotate ccache key every month
 
       # `verify-llvm` is a special target that runs all the regression tests
       # it includes `check-llvm` and special codegen tests
@@ -130,9 +141,7 @@ jobs:
         if: github.event_name == 'pull_request'
         working-directory: llvm
         run: |
-          git fetch --progress --depth=1 origin \
-            "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/heads/${{ github.event.pull_request.base.ref }}"
-          CHANGES=$(git diff -U0 ${{ github.event.pull_request.base.sha }})
+          CHANGES=$(git diff -U0 ${{ steps.previous-commit.outputs.sha }})
           echo "Running clang-tidy on the following changes: ${CHANGES}"
           echo "${CHANGES}" | \
              ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py \

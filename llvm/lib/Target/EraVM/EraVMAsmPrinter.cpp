@@ -121,13 +121,14 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     EmitToStreamer(*OutStreamer, TmpInst);
     return;
   }
-  case EraVM::REVERT:
-  case EraVM::RETURN: {
+  case EraVM::DEFAULT_FAR_REVERT:
+  case EraVM::DEFAULT_FAR_RETURN: {
+    bool IsRevert = Opc == EraVM::DEFAULT_FAR_REVERT;
     MCSymbol *DefaultFarReturnSym = OutContext.getOrCreateSymbol(
-        Opc == EraVM::REVERT ? "DEFAULT_FAR_REVERT" : "DEFAULT_FAR_RETURN");
+        IsRevert ? "DEFAULT_FAR_REVERT" : "DEFAULT_FAR_RETURN");
     // Expand to: ret/revert.to_label $rs0, @DEFAULT_FAR_RETURN
     MCOperand MCOp;
-    TmpInst.setOpcode(Opc == EraVM::REVERT ? EraVM::REVERTrl : EraVM::RETrl);
+    TmpInst.setOpcode(IsRevert ? EraVM::REVERTrl : EraVM::RETrl);
     // Operand: rs0
     lowerOperand(MI->getOperand(0), MCOp);
     TmpInst.addOperand(MCOp);
@@ -137,29 +138,6 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     // Operand: cc
     lowerOperand(MI->getOperand(1), MCOp);
     TmpInst.addOperand(MCOp);
-    EmitToStreamer(*OutStreamer, TmpInst);
-    return;
-  }
-  case EraVM::NOPSP: {
-    auto AppendSPModOperand = [&TmpInst](int64_t Imm) {
-      assert(Imm >= 0);
-      TmpInst.addOperand(MCOperand::createReg(EraVM::R0));
-      TmpInst.addOperand(MCOperand::createReg(EraVM::R0));
-      TmpInst.addOperand(MCOperand::createImm(Imm));
-    };
-    int64_t Addend = MI->getOperand(0).getImm();
-    if (Addend <= 0) {
-      TmpInst.setOpcode(EraVM::NOPsrr);
-      TmpInst.addOperand(MCOperand::createReg(EraVM::R0)); // rd0
-      AppendSPModOperand(-Addend);
-      TmpInst.addOperand(MCOperand::createReg(EraVM::R0)); // rs1
-    } else {
-      TmpInst.setOpcode(EraVM::NOPrrs);
-      TmpInst.addOperand(MCOperand::createReg(EraVM::R0)); // rs0
-      TmpInst.addOperand(MCOperand::createReg(EraVM::R0)); // rs1
-      AppendSPModOperand(Addend);
-    }
-    TmpInst.addOperand(MCOperand::createImm(0)); // predicate
     EmitToStreamer(*OutStreamer, TmpInst);
     return;
   }
