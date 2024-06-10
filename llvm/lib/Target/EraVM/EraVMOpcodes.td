@@ -55,9 +55,7 @@ class isStackOut<DstMode dst> {
     !eq(dst, DstStackAbsolute));
 }
 
-class OpcodeEncoding<bits<4> val> {
-  bits<4> Value = val;
-
+class OpcodeEncoding {
   bits<11> SrcMultiplier = 0; // No in_any operand by default.
   bits<11> DstMultiplier = 0; // No out_any operand by default.
 
@@ -67,23 +65,20 @@ class OpcodeEncoding<bits<4> val> {
   // the beginning of InOperandList.
 }
 
-def DirectEncoding     : OpcodeEncoding<0>; // opcode ⇒ opcode
+def DirectEncoding     : OpcodeEncoding; // opcode ⇒ opcode
 let SrcMultiplier = 4, DstMultiplier = 1, IndexOfStackDstUse = 2 in
-def NopEncoding        : OpcodeEncoding<1>; // opcode src dst ⇒ opcode + 4 × src + 1 × dst
+def NopEncoding        : OpcodeEncoding; // opcode src dst ⇒ opcode + 4 × src + 1 × dst
 let SrcMultiplier = 8, DstMultiplier = 2, IndexOfStackDstUse = 2 in
-def ArithCommEncoding  : OpcodeEncoding<2>; // opcode src dst set_flags ⇒ opcode + 8 × src + 2 × dst + set_flags
+def ArithCommEncoding  : OpcodeEncoding; // opcode src dst set_flags ⇒ opcode + 8 × src + 2 × dst + set_flags
 let SrcMultiplier = 16, DstMultiplier = 4, IndexOfStackDstUse = 2 in
-def ArithNCommEncoding : OpcodeEncoding<3>; // opcode src dst swap set_flags ⇒ opcode + 16 × src + 4 × dst + 2 × set_flags + swap
+def ArithNCommEncoding : OpcodeEncoding; // opcode src dst swap set_flags ⇒ opcode + 16 × src + 4 × dst + 2 × set_flags + swap
 let SrcMultiplier = 8, DstMultiplier = 2, IndexOfStackDstUse = 2 in
-def ArithPtrEncoding   : OpcodeEncoding<4>; // opcode src dst swap ⇒ opcode + 8 × src + 2 × dst + swap
-def FarCallEncoding    : OpcodeEncoding<5>; // opcode is_shard is_static ⇒ opcode + 2 × is_static + is_shard
-def RetEncoding        : OpcodeEncoding<6>; // opcode to_label ⇒ opcode + to_label
+def ArithPtrEncoding   : OpcodeEncoding; // opcode src dst swap ⇒ opcode + 8 × src + 2 × dst + swap
+def FarCallEncoding    : OpcodeEncoding; // opcode is_shard is_static ⇒ opcode + 2 × is_static + is_shard
 let SrcMultiplier = 1 in
-def JumpEncoding       : OpcodeEncoding<7>; // opcode src ⇒ opcode + 1 × src
-def LoadPtrEncoding    : OpcodeEncoding<8>; // opcode inc ⇒ opcode + inc
-def HeapOpEncoding     : OpcodeEncoding<9>; // opcode src_special inc ⇒ opcode + 10 × src_special + inc
-def LogEncoding        : OpcodeEncoding<10>;// opcode is_first ⇒ opcode + is_first
-def StaticOpEncoding   : OpcodeEncoding<11>;// opcode src_special inc ⇒ opcode + 2 × src_special + inc
+def JumpEncoding       : OpcodeEncoding; // opcode src ⇒ opcode + 1 × src
+def HeapOpEncoding     : OpcodeEncoding; // opcode src_special inc ⇒ opcode + 10 × src_special + inc
+def StaticOpEncoding   : OpcodeEncoding; // opcode src_special inc ⇒ opcode + 2 × src_special + inc
 
 class ArithOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
                       SrcMode src, DstMode dst,
@@ -112,7 +107,7 @@ class JumpOpcEncoder<bits<11> BaseOpcode,
 class UMAOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
                     SrcSpecialMode src> {
   bits<11> Opcode =
-    !cond(!eq(encoding, LoadPtrEncoding) : BaseOpcode,
+    !cond(!eq(encoding, DirectEncoding)  : BaseOpcode,
           !eq(encoding, HeapOpEncoding)  : !add(BaseOpcode, !mul(10, src.Value)),
           !eq(encoding, StaticOpEncoding): !add(BaseOpcode, !mul(2, src.Value)),
           true : -1);
@@ -134,10 +129,6 @@ def EraVMOpcodesList : GenericTable {
   ];
   let PrimaryKey = [ "BaseOpcode" ];
   let PrimaryKeyName = "lookupEraVMOpcodeByValue";
-}
-def lookupEraVMOpcodeByName : SearchIndex {
-  let Table = EraVMOpcodesList;
-  let Key = [ "Name" ];
 }
 
 def OpInvalid : EraVMOpcode<"<invalid>", 0, DirectEncoding>;
@@ -206,8 +197,8 @@ def OpStaticReadInc     : EraVMOpcode<"ldmi.st", 1097, StaticOpEncoding>;
 def OpStaticWrite       : EraVMOpcode<"stm.st",  1100, StaticOpEncoding>; // src inc ⇒ 1100 + 2 × src + inc
 def OpStaticWriteInc    : EraVMOpcode<"stmi.st", 1101, StaticOpEncoding>;
 
-def OpLoadPtr      : EraVMOpcode<"ld",     1083, LoadPtrEncoding>; // inc ⇒ 1083 + inc
-def OpLoadPtrInc   : EraVMOpcode<"ld.inc", 1084, LoadPtrEncoding>;
+def OpLoadPtr      : EraVMOpcode<"ld",     1083, DirectEncoding>; // inc ⇒ 1083 + inc
+def OpLoadPtrInc   : EraVMOpcode<"ld.inc", 1084, DirectEncoding>;
 
 def OpDecommit       : EraVMOpcode<"log.decommit", 1093, DirectEncoding>;
 def OpTransientLoad  : EraVMOpcode<"tload",    1094, DirectEncoding>;
