@@ -59,11 +59,12 @@ kDevNull = "/dev/null"
 kPdbgRegex = "%dbg\\(([^)'\"]*)\\)(.*)"
 
 
-# Constants for forcing compilation of files normally skipped; see Recursive Crash Testing in
-# "Practical Testing of a C99 Compiler Using Output Comparison."
+# Constants for forcing compilation of files normally skipped; see Recursive
+# Crash Testing in "Practical Testing of a C99 Compiler Using Output
+# Comparison."
 kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
-kOurMtriple =  os.getenv('FORCE_TRIPLE')      #   "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
-print("\n\n(Flash) kOurMtriple: ", kOurMtriple)
+kForcedTriple =  os.getenv('LIT_FORCE_TRIPLE')      #   "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
+print("\n\n(Flash) kOurMtriple: ", kForcedTriple)
 kAnomalyLogName = "Lit_Anomaly.log"
 
 
@@ -995,10 +996,10 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
 
 
 def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
-    if kOurMtriple:
+    if kForcedTriple:
         print("\n\n(Flash) executeScriptInternal commands (before): \n", str(commands))
         for i, ln in enumerate(commands):   
-            commands[i] = re.sub(kMtripleRegex, kOurMtriple, commands[i])
+            commands[i] = re.sub(kMtripleRegex, kForcedTriple, commands[i])
         print("\n\n(Flash) executeScriptInternal commands[i] (after): \n", i, str(commands[i]))
     cmds = []
     for i, ln in enumerate(commands):
@@ -1094,9 +1095,9 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
         script += ".bat"
 
 #     print("\n\n(Flash) executeScript commands (before): \n", str(commands))
-    if kOurMtriple:
+    if kForcedTriple:
         for i, ln in enumerate(commands):   
-            commands[i] = re.sub(kMtripleRegex, kOurMtriple, commands[i])
+            commands[i] = re.sub(kMtripleRegex, kForcedTriple, commands[i])
     #         print("\n\n(Flash) executeScript commands[i] (after): \n", i, str(commands[i]))
 
 
