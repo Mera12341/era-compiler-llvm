@@ -59,6 +59,15 @@ kDevNull = "/dev/null"
 kPdbgRegex = "%dbg\\(([^)'\"]*)\\)(.*)"
 
 
+# Constants for forcing compilation of files normally skipped; see Recursive Crash Testing in
+# "Practical Testing of a C99 Compiler Using Output Comparison."
+kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
+kOurMtriple =  os.getenv('FORCE_TRIPLE')      #   "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
+print("\n\n(Flash) kOurMtriple: ", kOurMtriple)
+kAnomalyLogName = "Lit_Anomaly.log"
+
+
+
 class ShellEnvironment(object):
 
     """Mutable shell environment containing things like CWD and env vars.
@@ -983,13 +992,6 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
         exitCode = not exitCode
 
     return exitCode
-
-
-kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
-kOurMtriple =  os.getenv('FORCE_TRIPLE')      #   "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
-print("\n\n(Flash) kOurMtriple: ", kOurMtriple)
-
-kAnomalyLogName = "Lit_Anomaly.log"
 
 
 def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
