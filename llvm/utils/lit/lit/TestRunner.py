@@ -63,8 +63,10 @@ kPdbgRegex = "%dbg\\(([^)'\"]*)\\)(.*)"
 # Crash Testing in "Practical Testing of a C99 Compiler Using Output
 # Comparison."
 kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
-kForcedTriple =  os.getenv('LIT_FORCE_TRIPLE')      #   "triple=eravm-unknown-unknown" #Hack: substitute the target triple with our own
-print("\n\n(Flash) kOurMtriple: ", kForcedTriple)
+kForcedTriple =  os.getenv('LIT_FORCE_TRIPLE')
+print("\n\n(Flash) kForcedTriple: ", kForcedTriple)
+
+kRunUnsupported =  os.getenv('LIT_RUN_UNSUPPORTED') or kForcedTriple
 kAnomalyLogName = "Lit_Anomaly.log"
 
 
@@ -2130,8 +2132,8 @@ def _runShTest(test, litConfig, useExternalSh, script, tmpBase):
 def executeShTest(
     test, litConfig, useExternalSh, extra_substitutions=[], preamble_commands=[]
 ):
-    # if test.config.unsupported:
-        # return lit.Test.Result(Test.UNSUPPORTED, "Test is unsupported")
+    if test.config.unsupported and not kRunUnsupported:
+        return lit.Test.Result(Test.UNSUPPORTED, "Test is unsupported")
 
     script = list(preamble_commands)
     parsed = parseIntegratedTestScript(test, require_script=not script)
