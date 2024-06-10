@@ -65,8 +65,10 @@ kPdbgRegex = "%dbg\\(([^)'\"]*)\\)(.*)"
 kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
 kForceTriple =  os.getenv('LIT_FORCE_TRIPLE')
 print("\n\n(Flash) kForceTriple: ", kForceTriple)
+kMArchRegex = r'march=\S+'  
+kForceArch =  os.getenv('LIT_FORCE_ARCH')
 
-kRunUnsupported =  os.getenv('LIT_RUN_UNSUPPORTED') or kForceTriple
+kRunUnsupported =  os.getenv('LIT_RUN_UNSUPPORTED') or kForceTriple or kForceArch
 kAnomalyLogName = "Lit_Anomaly.log"
 
 
@@ -998,10 +1000,13 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
 
 
 def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
-    if kForceTriple:
+    if kForceTriple or kForceArch:
         print("\n\n(Flash) executeScriptInternal commands (before): \n", str(commands))
         for i, ln in enumerate(commands):   
-            commands[i] = re.sub(kMtripleRegex, kForceTriple, commands[i])
+            if kForceTriple:
+                commands[i] = re.sub(kMtripleRegex, kForceTriple, commands[i])
+            if kForceArch:
+                commands[i] = re.sub(kMArchRegex, kForceArch, commands[i])
         print("\n\n(Flash) executeScriptInternal commands[i] (after): \n", i, str(commands[i]))
     cmds = []
     for i, ln in enumerate(commands):
