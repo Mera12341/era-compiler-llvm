@@ -63,10 +63,10 @@ kPdbgRegex = "%dbg\\(([^)'\"]*)\\)(.*)"
 # Crash Testing in "Practical Testing of a C99 Compiler Using Output
 # Comparison."
 kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
-kForcedTriple =  os.getenv('LIT_FORCE_TRIPLE')
-print("\n\n(Flash) kForcedTriple: ", kForcedTriple)
+kForceTriple =  os.getenv('LIT_FORCE_TRIPLE')
+print("\n\n(Flash) kForceTriple: ", kForceTriple)
 
-kRunUnsupported =  os.getenv('LIT_RUN_UNSUPPORTED') or kForcedTriple
+kRunUnsupported =  os.getenv('LIT_RUN_UNSUPPORTED') or kForceTriple
 kAnomalyLogName = "Lit_Anomaly.log"
 
 
@@ -998,10 +998,10 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
 
 
 def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
-    if kForcedTriple:
+    if kForceTriple:
         print("\n\n(Flash) executeScriptInternal commands (before): \n", str(commands))
         for i, ln in enumerate(commands):   
-            commands[i] = re.sub(kMtripleRegex, kForcedTriple, commands[i])
+            commands[i] = re.sub(kMtripleRegex, kForceTriple, commands[i])
         print("\n\n(Flash) executeScriptInternal commands[i] (after): \n", i, str(commands[i]))
     cmds = []
     for i, ln in enumerate(commands):
@@ -1097,9 +1097,9 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
         script += ".bat"
 
 #     print("\n\n(Flash) executeScript commands (before): \n", str(commands))
-    if kForcedTriple:
+    if kForceTriple:
         for i, ln in enumerate(commands):   
-            commands[i] = re.sub(kMtripleRegex, kForcedTriple, commands[i])
+            commands[i] = re.sub(kMtripleRegex, kForceTriple, commands[i])
     #         print("\n\n(Flash) executeScript commands[i] (after): \n", i, str(commands[i]))
 
 
