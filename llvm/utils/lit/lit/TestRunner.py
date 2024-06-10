@@ -62,7 +62,7 @@ kPdbgRegex = "%dbg\\(([^)'\"]*)\\)(.*)"
 # Constants for forcing compilation of files normally skipped; see Recursive
 # Crash Testing in "Practical Testing of a C99 Compiler Using Output
 # Comparison."
-kMtripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
+kMTripleRegex = r'triple=\S+'  # Match -mtriple= or --triple= with any target triple
 kForceTriple =  os.getenv('LIT_FORCE_TRIPLE')
 print("\n\n(Flash) kForceTriple: ", kForceTriple)
 kMArchRegex = r'march=\S+'  
@@ -1004,7 +1004,7 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
         print("\n\n(Flash) executeScriptInternal commands (before): \n", str(commands))
         for i, ln in enumerate(commands):   
             if kForceTriple:
-                commands[i] = re.sub(kMtripleRegex, kForceTriple, commands[i])
+                commands[i] = re.sub(kMTripleRegex, kForceTriple, commands[i])
             if kForceArch:
                 commands[i] = re.sub(kMArchRegex, kForceArch, commands[i])
         print("\n\n(Flash) executeScriptInternal commands[i] (after): \n", i, str(commands[i]))
@@ -1104,7 +1104,7 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
 #     print("\n\n(Flash) executeScript commands (before): \n", str(commands))
     if kForceTriple:
         for i, ln in enumerate(commands):   
-            commands[i] = re.sub(kMtripleRegex, kForceTriple, commands[i])
+            commands[i] = re.sub(kMTripleRegex, kForceTriple, commands[i])
     #         print("\n\n(Flash) executeScript commands[i] (after): \n", i, str(commands[i]))
 
 
