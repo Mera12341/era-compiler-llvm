@@ -69,8 +69,6 @@ kMArchRegex = r'march=\S+'
 kForceArch =  os.getenv('LIT_FORCE_ARCH')
 
 kRunUnsupported =  os.getenv('LIT_RUN_UNSUPPORTED') or kForceTriple or kForceArch
-kAnomalyLogName = "Lit_Anomaly.log"
-
 
 
 class ShellEnvironment(object):
@@ -1074,7 +1072,7 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
 
         # Show the error conditions:
         if result.exitCode != 0:
-            print("(Flash) result.exitCode: ", result.exitCode)
+            # print("(Flash) result.exitCode: ", result.exitCode)
             # On Windows, a negative exit code indicates a signal, and those are
             # easier to recognize or look up if we print them in hex.
             if litConfig.isWindows and (result.exitCode < 0 or result.exitCode > 255):
@@ -1082,8 +1080,8 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
             else:
                 codeStr = str(result.exitCode)
             out += "error: command failed with exit status: %s\n" % (codeStr,)
-            if result.exitCode < 0 or result.exitCode > 2:  # 2 is FileCheck failure. FIXME: Really want ICE_EXIT_CODE.  Also cache fd, maybe not CWD
-                open(kAnomalyLogName, "a").write(
+            if result.exitCode < 0 or result.exitCode > 2:  # 2 is FileCheck failure. FIXME: Really want ICE_EXIT_CODE.
+                print(
                     "\n\n%s\nAnomaly: Args %s\n exitCode: %s\n" % (datetime.datetime.utcnow().isoformat(), " ".join('"%s"' % s for s in result.command.args), result.exitCode)
                 )
         if litConfig.maxIndividualTestTime > 0 and result.timeoutReached:
@@ -1100,13 +1098,6 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
     script = tmpBase + ".script"
     if isWin32CMDEXE:
         script += ".bat"
-
-#     print("\n\n(Flash) executeScript commands (before): \n", str(commands))
-    if kForceTriple:
-        for i, ln in enumerate(commands):   
-            commands[i] = re.sub(kMTripleRegex, kForceTriple, commands[i])
-    #         print("\n\n(Flash) executeScript commands[i] (after): \n", i, str(commands[i]))
-
 
     # Write script file
     mode = "w"
