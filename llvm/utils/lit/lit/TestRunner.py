@@ -1080,9 +1080,9 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
             else:
                 codeStr = str(result.exitCode)
             out += "error: command failed with exit status: %s\n" % (codeStr,)
-            if result.exitCode < 0 or result.exitCode > 2:  # 2 is FileCheck failure. FIXME: Really want ICE_EXIT_CODE.
+            if kRunUnsupported and (result.exitCode < 0 or result.exitCode > 2):  # 2 is FileCheck failure. FIXME: Really want ICE_EXIT_CODE.
                 print(
-                    "\n\n%s\nAnomaly: Args %s\n exitCode: %s\n" % (datetime.datetime.utcnow().isoformat(), " ".join('"%s"' % s for s in result.command.args), result.exitCode)
+                    "\n\n%s\nAnomalous exitCode: %s\ncommand.args: %s\n\n\n" % (datetime.datetime.utcnow().isoformat(), result.exitCode, " ".join('"%s"' % s for s in result.command.args))
                 )
         if litConfig.maxIndividualTestTime > 0 and result.timeoutReached:
             out += "error: command reached timeout: %s\n" % (
